@@ -1,116 +1,118 @@
-# Conception de la base de données AFS
+# AFS Database Design
 
-**Projet :** site public et plateforme des membres Ask For Success
+**Project:** Ask For Success public website and member platform
 
-**Moteur retenu :** PostgreSQL
+**Selected database:** PostgreSQL
 
-**État :** modèle V1 corrigé et prêt pour validation d’équipe
+**Status:** corrected V1 model ready for team review
 
-## Décision
+## Decision
 
-PostgreSQL est retenu comme moteur de base de données. Le modèle utilise des identifiants UUID, des dates avec fuseau horaire, des contraintes relationnelles explicites et des types PostgreSQL adaptés aux données structurées.
+PostgreSQL is the selected database engine. The model uses UUID identifiers, time-zone-aware timestamps, explicit relationships, and PostgreSQL data types suited to structured application data.
 
-Le fichier [`AFS_Database.dbml`](./AFS_Database.dbml) représente les tables métier AFS. Il ne reproduit pas les tables techniques créées automatiquement par Django.
+[`AFS_Database.dbml`](./AFS_Database.dbml) represents the AFS business tables. It intentionally excludes technical tables created automatically by Django.
 
-## Tables gérées automatiquement par Django
+## Tables managed by Django
 
-Django crée et maintient notamment :
+Django creates and maintains tables including:
 
-- `django_migrations` ;
-- `django_content_type` ;
-- `django_session` ;
-- `auth_group` ;
-- `auth_permission` ;
-- les tables de liaison entre utilisateurs, groupes et permissions.
+- `django_migrations`;
+- `django_content_type`;
+- `django_session`;
+- `auth_group`;
+- `auth_permission`;
+- user, group, and permission junction tables.
 
-Ces tables servent aux migrations, sessions, groupes et permissions globales. Elles seront créées par les migrations Django et ne doivent pas être recréées manuellement dans le DBML métier.
+These tables support migrations, sessions, global groups, and global permissions. Django migrations create them, so they must not be duplicated in the business DBML.
 
-Le modèle AFS conserve une table utilisateur personnalisée, car le compte possède des champs métier propres au projet. Les groupes et permissions globales restent gérés par Django. Les autorisations de contrôle d’entrée liées à un événement précis sont conservées dans une table métier dédiée.
+AFS keeps a custom user table because the account contains project-specific fields. Django manages global groups and permissions. Event-specific check-in authorization remains in a dedicated AFS business table.
 
-## Changements principaux
+## Main changes
 
-### Identité et membres
+### Identity and membership
 
-- séparation entre le statut du compte et le statut de l’adhésion ;
-- ajout des départements et fonctions internes ;
-- ajout de l’affectation principale du membre ;
-- ajout du parcours d’intégration obligatoire ;
-- protection du document d’identité par une référence vers un fichier sensible ;
-- ajout d’une médiathèque de fichiers réutilisables.
+- separated account status from membership status;
+- added departments and internal positions;
+- added each member's primary department and position;
+- added mandatory onboarding;
+- protected identity documents through sensitive file references;
+- added a reusable file and media library.
 
-### Recrutement
+### Recruitment
 
-- remplacement des formulaires par poste par un formulaire réutilisable par département ;
-- verrouillage du formulaire après la première candidature ;
-- ajout des choix de questions dans une table structurée ;
-- ajout du type de question date ;
-- ajout des six statuts de candidature confirmés ;
-- ajout des notes RH privées ;
-- ajout des demandes d’adhésion directe ;
-- conservation séparée du résultat d’envoi du courriel de décision.
+- replaced position questionnaires with one reusable form per department;
+- locked a department form after its first application;
+- moved question choices into a structured table;
+- added date questions;
+- added the six confirmed application statuses;
+- added private HR notes;
+- added direct membership requests;
+- tracked decision-email delivery separately from the business decision.
 
-### Événements
+### Events
 
-- ajout des périodes d’ouverture et de fermeture des inscriptions ;
-- ajout du mode de validation automatique ou manuelle ;
-- ajout de la configuration QR ;
-- distinction entre validation de l’inscription et présence réelle ;
-- création d’un contrôle d’entrée unique et auditable ;
-- ajout des autorisations de contrôle limitées à un événement ;
-- stockage du jeton QR sous forme d’empreinte ;
-- simplification du formulaire public aux champs confirmés pour la V1.
+- added registration opening and closing periods;
+- added automatic and manual approval modes;
+- added QR configuration and delivery state;
+- separated registration approval from physical attendance;
+- added unique and auditable check-in records;
+- added event-scoped check-in authorization;
+- stored QR tokens as hashes;
+- reduced the public registration form to the confirmed V1 fields.
 
-### Contenus et CMS
+### Content and CMS
 
-- remplacement des tables photo et vidéo par une médiathèque commune ;
-- suppression des albums et catégories de galerie non requis en V1 ;
-- unification des actualités, histoires et annonces publiques ;
-- ajout des sélections de contenu mises en avant ;
-- conservation des sections fixes des pages publiques ;
-- suppression de la traduction multilingue de la V1 ;
-- suppression de l’état lu ou non lu des notifications membres.
+- replaced separate photo and video storage with a shared media library;
+- removed gallery albums and categories that are not required in V1;
+- unified news, stories, and public announcements;
+- added featured-content selections;
+- kept fixed public-page sections;
+- removed multilingual translations from V1;
+- removed notification read state from V1.
 
-### Audit et sécurité
+### Audit and security
 
-- journal d’audit en ajout seulement ;
-- ajout de l’acteur, de la cible, du résultat, de la requête et des métadonnées techniques ;
-- politiques de suppression explicites sur toutes les relations ;
-- interdiction de stocker les secrets dans les paramètres du site ;
-- conservation des fichiers réels hors de PostgreSQL.
+- replaced the basic activity log with an append-only audit log;
+- added actor, target, result, request, and technical metadata;
+- added explicit deletion policies to every relationship;
+- prohibited secrets in site settings;
+- kept file contents outside PostgreSQL.
 
-## Modules métier
+## Business modules
 
-| Module | Responsabilité |
+| Module | Responsibility |
 |---|---|
-| Identité et organisation | comptes, membres, départements, fonctions et fichiers |
-| Recrutement | formulaires, opportunités, candidatures, réponses, notes RH et adhésion directe |
-| Événements | événements, inscriptions, QR, contrôle d’entrée et rappels |
-| Contenus et CMS | contenus publics, galerie, sections, mises en avant et notifications |
-| Engagement | dons, partenaires et demandes de partenariat |
-| Audit | historique sécurisé des actions importantes |
+| Identity and organization | accounts, members, departments, positions, and files |
+| Recruitment | department forms, opportunities, applications, answers, HR notes, and direct membership |
+| Events | events, registrations, QR delivery, check-in, and reminders |
+| Content and CMS | public content, gallery, page sections, featured items, and notifications |
+| Community engagement | donations, partners, and partnership requests |
+| Audit | protected history of important actions |
 
-## Règles obligatoires à appliquer dans les migrations
+## Required migration constraints
 
-Certaines contraintes PostgreSQL dépassent la syntaxe portable du DBML. Les migrations doivent ajouter explicitement :
+Some PostgreSQL constraints are more specific than portable DBML syntax. Migrations must explicitly add:
 
-- l’extension `citext` ;
-- un seul droit actif de contrôle par utilisateur et événement ;
-- la cohérence des dates de début, fin, ouverture et fermeture d’un événement ;
-- des valeurs positives pour capacité, prix, montant et taille de fichier ;
-- exactement une cible pour chaque mise en avant ;
-- exactement une valeur de réponse correspondant au type de question ;
-- les champs obligatoires selon le type de don ;
-- la cohérence entre activation QR et inscription active.
+- the `citext` extension;
+- one active check-in assignment per user and event;
+- valid event start, end, registration opening, and registration closing timestamps;
+- non-negative capacity, price, donation amount, and file size values;
+- exactly one target for each featured item;
+- exactly one answer value matching the question type;
+- conditional donation fields based on donation type;
+- consistency between QR activation and event registration availability.
 
-## Politique de suppression
+Department, position, and questionnaire consistency is already enforced through composite foreign keys in the DBML.
 
-- les comptes utilisateurs sont désactivés et non supprimés physiquement ;
-- les candidatures, inscriptions, décisions, contrôles et audits sont conservés ;
-- les contenus publics sont archivés ;
-- les fichiers sensibles sont supprimés du stockage selon la politique de conservation, puis leur métadonnée est archivée ;
-- les relations historiques utilisent `RESTRICT` afin d’éviter une suppression accidentelle ;
-- seules les véritables données dépendantes utilisent `CASCADE`.
+## Deletion policy
 
-## Résultat attendu
+- user accounts are disabled instead of physically deleted;
+- applications, registrations, decisions, check-ins, and audit records are retained;
+- public content is archived;
+- sensitive file content is removed from object storage according to the retention policy, then its metadata is archived;
+- historical relationships use `RESTRICT` to prevent accidental deletion;
+- only true dependent records use `CASCADE`.
 
-Ce modèle devient la source de vérité pour les migrations de la base de données. Les modèles de l’ORM devront respecter les noms, contraintes, relations et responsabilités définis dans le DBML approuvé.
+## Expected result
+
+This model is the source of truth for database migrations. ORM models must preserve the approved names, constraints, relationships, and module responsibilities.
