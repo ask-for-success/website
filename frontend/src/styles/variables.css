@@ -1,0 +1,34 @@
+
+:root {
+  /* Main colors */
+  --primary: #6D2BB4;
+  --secondary: #A77BD2;
+  --background: #F8F6FC;
+  --light-purple: #EDE4F8;
+  --white: #FFFFFF;
+
+  /* Text */
+  --text-dark: #20202A;
+  --text-muted: #777482;
+
+  /* Existing component compatibility */
+  --color-green: var(--primary);
+  --color-green-dark: #4B1B80;
+  --color-cream: var(--background);
+  --color-muted: var(--text-muted);
+  --color-ink: var(--text-dark);
+
+  /* Layout */
+  --content-width: 1200px;
+  --container-width: 1200px;
+
+  /* Borders and shadows */
+  --border: #E8E2EF;
+  --shadow: 0 4px 20px rgba(50, 30, 80, 0.08);
+
+  /* Rounded corners */
+  --radius-card: 20px;
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+}
