@@ -1,0 +1,37 @@
+services:
+  database:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: ${AFS_DB_NAME:-afs}
+      POSTGRES_USER: ${AFS_DB_USER:-afs}
+      POSTGRES_PASSWORD: ${AFS_DB_PASSWORD:-afs}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AFS_DB_USER:-afs} -d ${AFS_DB_NAME:-afs}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "127.0.0.1:${AFS_DB_HOST_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      AFS_DB_HOST: database
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

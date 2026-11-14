@@ -1,0 +1,170 @@
+{
+  "info": {
+    "_postman_id": "a1b8f884-8ba0-4e89-b984-c6d08e8716ad",
+    "name": "AFS - Access Control",
+    "description": "Administrator review flow for global roles and permissions. Create a superuser first, then set admin_email, admin_password, and target_user_id collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 - Login as administrator",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Administrator login succeeds', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('admin_access_token', body.access_token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+        },
+        "url": "{{base_url}}/api/v1/auth/login/"
+      }
+    },
+    {
+      "name": "2 - Get current access",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Current access is returned', function () { pm.response.to.have.status(200); });",
+              "pm.test('Roles and permissions are arrays', function () { const body = pm.response.json(); pm.expect(body.roles).to.be.an('array'); pm.expect(body.permissions).to.be.an('array'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_access_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/access/me/"
+      }
+    },
+    {
+      "name": "3 - List access options",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Access options are returned', function () { pm.response.to.have.status(200); });",
+              "pm.test('Two roles and HR permission exist', function () { const body = pm.response.json(); pm.expect(body.roles).to.have.length(2); pm.expect(body.additional_permissions[0].key).to.eql('accounts.manage_hr'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_access_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/access/options/"
+      }
+    },
+    {
+      "name": "4 - Assign content and HR access to target user",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Access is assigned', function () { pm.response.to.have.status(200); });",
+              "pm.test('Content role and direct HR permission are returned', function () { const body = pm.response.json(); pm.expect(body.roles).to.include('content_manager'); pm.expect(body.direct_permissions).to.include('accounts.manage_hr'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"roles\": [\n    \"content_manager\"\n  ],\n  \"permissions\": [\n    \"accounts.manage_hr\"\n  ]\n}"
+        },
+        "url": "{{base_url}}/api/v1/access/users/{{target_user_id}}/"
+      }
+    },
+    {
+      "name": "5 - Read target user access",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Target access is returned', function () { pm.response.to.have.status(200); });",
+              "pm.test('HR is a direct permission, not a role', function () { const body = pm.response.json(); pm.expect(body.roles).not.to.include('hr_manager'); pm.expect(body.direct_permissions).to.include('accounts.manage_hr'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_access_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/access/users/{{target_user_id}}/"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "admin_email",
+      "value": ""
+    },
+    {
+      "key": "admin_password",
+      "value": ""
+    },
+    {
+      "key": "target_user_id",
+      "value": ""
+    },
+    {
+      "key": "admin_access_token",
+      "value": ""
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+# Authorization Guide
+
+This guide explains the global role and permission design. Exact request fields, responses, and status codes are generated in [Swagger](http://localhost:8000/api/docs/).
+
+## Design
+
+Authorization uses Django groups as global role bundles and Django permissions as capabilities. The `users` table has no role column, so one user can hold multiple global roles without duplicating account data.
+
+| Global role | Capabilities |
+|---|---|
+| `account_administrator` | Manage accounts, access assignments, and the future audit log. |
+| `content_manager` | Manage CMS content after the CMS domain is implemented. |
+
+HR is not a global role or a dedicated account type. `accounts.manage_hr` is an additional permission assigned directly to selected content managers. The API rejects this permission unless the user also has the `content_manager` role.
+
+The following concepts are intentionally not global roles:
+
+- an applicant is an authenticated user acting on their own applications;
+- membership will come from the future membership record;
+- event check-in access will be assigned for one event at a time;
+- `is_staff` controls Django administration access and is separate from business roles;
+- a superuser is reserved for technical bootstrap and emergency administration.
+
+## Available API behavior
+
+- Every authenticated user can read their effective system roles and permissions.
+- A user with `accounts.manage_access_assignments` can list assignable roles and additional permissions.
+- The same permission allows reading and replacing another user's managed access.
+- Replacing managed access preserves unrelated Django groups and permissions.
+- A non-superuser cannot change their own access.
+- Unknown and duplicate role or permission keys are rejected.
+
+The frontend should use the current-access endpoint shown in Swagger instead of inferring authorization from email, staff status, or page location.
+
+## Initial administrator bootstrap
+
+Create the first superuser from the terminal:
+
+```powershell
+docker compose run --rm backend python manage.py createsuperuser
+```
+
+The Django superuser is not intended for normal daily administration. It bypasses permission checks, can use Django's technical administration site, and exists to create or recover the first operational administrator.
+
+Log in through the normal authentication API, authorize Swagger or Postman with the returned access token, and assign `account_administrator` to the intended operational administrator. The future frontend administration dashboard should then use that regular account and the protected access APIs. Later assignments do not require the superuser.
+
+For manual review, import [AFS_Access_Control.postman_collection.json](./AFS_Access_Control.postman_collection.json) and set its `admin_email`, `admin_password`, and `target_user_id` variables.
+
+## Review boundary
+
+This phase establishes global authorization only. Account activation endpoints, recruitment data, memberships, CMS models, events, event-specific permissions, and audit records remain separate future domains.
