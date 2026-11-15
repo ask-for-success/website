@@ -7,6 +7,7 @@ from apps.organization.models import Department, Position
 
 from .models import (
     MemberAssignment,
+    MemberIdentity,
     Membership,
     MembershipOnboarding,
     OnboardingStatus,
@@ -14,6 +15,7 @@ from .models import (
 from .operations import (
     accept_membership_invitation,
     admit_existing_account,
+    complete_self_onboarding,
     create_membership_invitation,
     record_member_departure,
     transfer_member,
@@ -149,6 +151,7 @@ class MembershipListSerializer(serializers.ModelSerializer):
     user = MembershipUserSerializer(read_only=True)
     onboarding = MembershipOnboardingSerializer(read_only=True)
     current_assignment = serializers.SerializerMethodField()
+    national_id_collected = serializers.SerializerMethodField()
 
     class Meta:
         model = Membership
@@ -159,6 +162,7 @@ class MembershipListSerializer(serializers.ModelSerializer):
             "accepted_at",
             "onboarding",
             "current_assignment",
+            "national_id_collected",
             "updated_at",
         )
 
@@ -175,6 +179,10 @@ class MembershipListSerializer(serializers.ModelSerializer):
         if assignment is None:
             return None
         return MemberAssignmentSerializer(assignment).data
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_national_id_collected(self, instance) -> bool:
+        return hasattr(instance, "identity")
 
 
 class MembershipDetailSerializer(MembershipListSerializer):
@@ -214,6 +222,7 @@ class MemberAreaMembershipSerializer(serializers.ModelSerializer):
     onboarding = MembershipOnboardingSerializer(read_only=True)
     current_assignment = serializers.SerializerMethodField()
     assignment_history = serializers.SerializerMethodField()
+    national_id_collected = serializers.SerializerMethodField()
 
     class Meta:
         model = Membership
@@ -224,6 +233,7 @@ class MemberAreaMembershipSerializer(serializers.ModelSerializer):
             "onboarding",
             "current_assignment",
             "assignment_history",
+            "national_id_collected",
         )
         read_only_fields = fields
 
@@ -248,6 +258,10 @@ class MemberAreaMembershipSerializer(serializers.ModelSerializer):
         ]
         return MemberAreaAssignmentSerializer(assignments, many=True).data
 
+    @extend_schema_field(serializers.BooleanField())
+    def get_national_id_collected(self, instance) -> bool:
+        return hasattr(instance, "identity")
+
 
 class MemberAreaEventSerializer(serializers.Serializer):
     id = serializers.UUIDField()
@@ -267,7 +281,49 @@ class MemberAreaScannerAssignmentSerializer(serializers.Serializer):
 
 class MemberAreaSummarySerializer(serializers.Serializer):
     membership = MemberAreaMembershipSerializer(allow_null=True)
+    onboarding_required = serializers.BooleanField()
+    can_access_member_features = serializers.BooleanField()
     active_scanner_assignments = MemberAreaScannerAssignmentSerializer(many=True)
+
+
+class SelfOnboardingSerializer(serializers.Serializer):
+    national_id_number = serializers.RegexField(
+        regex=r"^[A-Za-z0-9]{4,20}$",
+        max_length=20,
+        help_text=(
+            "The member's national ID number using 4 to 20 letters and digits. "
+            "No identity document is accepted."
+        ),
+        write_only=True,
+    )
+
+    def validate_national_id_number(self, value):
+        return value.strip().upper()
+
+    def create(self, validated_data):
+        try:
+            return complete_self_onboarding(
+                user=self.context["request"].user,
+                **validated_data,
+            )
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(
+                convert_validation_error(error)
+            ) from error
+
+
+class MemberIdentitySerializer(serializers.ModelSerializer):
+    membership_id = serializers.UUIDField(source="membership.id")
+
+    class Meta:
+        model = MemberIdentity
+        fields = (
+            "membership_id",
+            "national_id_number",
+            "submitted_at",
+            "updated_at",
+        )
+        read_only_fields = fields
 
 
 class ExistingAccountAdmissionSerializer(serializers.Serializer):
@@ -322,10 +378,7 @@ class MemberTransferSerializer(serializers.Serializer):
 
 class OnboardingStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(
-        choices=(
-            OnboardingStatus.IN_PROGRESS,
-            OnboardingStatus.COMPLETED,
-        )
+        choices=(OnboardingStatus.IN_PROGRESS,)
     )
 
     def create(self, validated_data):

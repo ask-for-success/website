@@ -169,3 +169,11 @@ For a pending or active member accepting an offer for a different assignment, ac
 An account has at most one application for a recruitment opportunity, permanently and regardless of whether that application is open, accepted, rejected, declined, or withdrawn. Final applications are retained as immutable recruitment and audit history; they are not deleted, reset, or reopened to permit reapplication.
 
 A later recruitment campaign is represented by a newly published opportunity. The person reuses the same account and can submit one new application to that new opportunity, including when it uses the same department, position, and reusable form.
+
+## D-032 — Self-service onboarding activates membership
+
+The accepted candidate's login account remains active before onboarding so the person can log in even if the acceptance email was not read. Email is a notification channel, not the only onboarding entry point. The self-service membership summary tells the frontend whether onboarding is required and whether member features may be accessed.
+
+Only the authenticated member completes onboarding. The required V1 submission contains the national ID number and never an identity-card scan, image, or document. Successful validation atomically stores one normalized unique identity record, completes onboarding, and changes membership from `pending_onboarding` to `active`. HR may mark onboarding in progress but cannot complete it for the member.
+
+Ordinary member responses expose only whether a national ID was collected. The complete value is available through a dedicated endpoint only to HR-authorized content managers, global account administrators, and superusers. Submission and every successful complete-value read are audited without placing the number in audit state.

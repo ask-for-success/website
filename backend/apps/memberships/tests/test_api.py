@@ -6,10 +6,16 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
+from apps.audit.models import AuditAction, AuditRecord
 from apps.events.models import Event, EventScanner, PublicationStatus
 from apps.organization.models import Department, Position
 
-from ..models import Membership, MembershipStatus, OnboardingStatus
+from ..models import (
+    MemberIdentity,
+    Membership,
+    MembershipStatus,
+    OnboardingStatus,
+)
 
 
 class MembershipLifecycleApiTests(APITestCase):
@@ -28,6 +34,16 @@ class MembershipLifecycleApiTests(APITestCase):
                 content_type__app_label="accounts",
                 codename="manage_hr",
             )
+        )
+        cls.account_administrator = User.objects.create_user(
+            email="membership-admin@example.com",
+            first_name="Membership",
+            last_name="Administrator",
+            phone_number="+212600000805",
+            password="StrongPassword!2026",
+        )
+        cls.account_administrator.groups.add(
+            Group.objects.get(name="account_administrator")
         )
         cls.ordinary_user = User.objects.create_user(
             email="membership-ordinary@example.com",
@@ -73,6 +89,18 @@ class MembershipLifecycleApiTests(APITestCase):
         return self.client.post(
             "/api/v1/memberships/admissions/",
             self.admission_payload(user),
+            format="json",
+        )
+
+    def complete_self_onboarding(
+        self,
+        user=None,
+        national_id_number="AB123456",
+    ):
+        self.client.force_authenticate(user or self.candidate)
+        return self.client.post(
+            "/api/v1/memberships/me/onboarding/",
+            {"national_id_number": national_id_number},
             format="json",
         )
 
@@ -167,59 +195,57 @@ class MembershipLifecycleApiTests(APITestCase):
             "Accepted into the marketing department",
         )
 
-    def test_onboarding_must_start_before_completion_and_then_activates_member(self):
+    def test_member_completes_mandatory_onboarding_and_activates_membership(self):
         creation = self.admit_candidate()
         membership_id = creation.data["id"]
 
-        premature_response = self.client.patch(
+        hr_completion_response = self.client.patch(
             f"/api/v1/memberships/{membership_id}/onboarding/",
             {"status": OnboardingStatus.COMPLETED},
             format="json",
         )
-        start_response = self.client.patch(
-            f"/api/v1/memberships/{membership_id}/onboarding/",
-            {"status": OnboardingStatus.IN_PROGRESS},
-            format="json",
-        )
-        completion_response = self.client.patch(
-            f"/api/v1/memberships/{membership_id}/onboarding/",
-            {"status": OnboardingStatus.COMPLETED},
-            format="json",
+        self.client.force_authenticate(self.candidate)
+        before_response = self.client.get("/api/v1/memberships/me/")
+        completion_response = self.complete_self_onboarding(
+            national_id_number="ab123456"
         )
 
         self.assertEqual(
-            premature_response.status_code,
+            hr_completion_response.status_code,
             status.HTTP_400_BAD_REQUEST,
         )
-        self.assertEqual(start_response.status_code, status.HTTP_200_OK)
-        self.assertIsNotNone(start_response.data["onboarding"]["started_at"])
+        self.assertTrue(before_response.data["onboarding_required"])
+        self.assertFalse(before_response.data["can_access_member_features"])
         self.assertEqual(completion_response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            completion_response.data["status"],
+            completion_response.data["membership"]["status"],
             MembershipStatus.ACTIVE,
         )
         self.assertEqual(
-            completion_response.data["onboarding"]["status"],
+            completion_response.data["membership"]["onboarding"]["status"],
             OnboardingStatus.COMPLETED,
         )
-        self.assertIsNotNone(
-            completion_response.data["onboarding"]["completed_at"]
+        self.assertFalse(completion_response.data["onboarding_required"])
+        self.assertTrue(completion_response.data["can_access_member_features"])
+        self.assertTrue(
+            completion_response.data["membership"]["national_id_collected"]
         )
+        self.assertIsNotNone(
+            completion_response.data["membership"]["onboarding"]["started_at"]
+        )
+        self.assertIsNotNone(
+            completion_response.data["membership"]["onboarding"]["completed_at"]
+        )
+        self.assertNotIn("AB123456", str(completion_response.data))
+        identity = MemberIdentity.objects.get(membership_id=membership_id)
+        self.assertEqual(identity.national_id_number, "AB123456")
 
     def test_completed_onboarding_cannot_be_reopened(self):
         creation = self.admit_candidate()
         membership_id = creation.data["id"]
         onboarding_url = f"/api/v1/memberships/{membership_id}/onboarding/"
-        self.client.patch(
-            onboarding_url,
-            {"status": OnboardingStatus.IN_PROGRESS},
-            format="json",
-        )
-        self.client.patch(
-            onboarding_url,
-            {"status": OnboardingStatus.COMPLETED},
-            format="json",
-        )
+        self.complete_self_onboarding()
+        self.client.force_authenticate(self.hr_manager)
 
         response = self.client.patch(
             onboarding_url,
@@ -232,17 +258,8 @@ class MembershipLifecycleApiTests(APITestCase):
     def test_departure_inactivates_membership_and_preserves_history(self):
         creation = self.admit_candidate()
         membership_id = creation.data["id"]
-        onboarding_url = f"/api/v1/memberships/{membership_id}/onboarding/"
-        self.client.patch(
-            onboarding_url,
-            {"status": OnboardingStatus.IN_PROGRESS},
-            format="json",
-        )
-        self.client.patch(
-            onboarding_url,
-            {"status": OnboardingStatus.COMPLETED},
-            format="json",
-        )
+        self.complete_self_onboarding()
+        self.client.force_authenticate(self.hr_manager)
 
         response = self.client.post(
             f"/api/v1/memberships/{membership_id}/departures/",
@@ -313,6 +330,14 @@ class MembershipLifecycleApiTests(APITestCase):
             response.data["paths"],
         )
         self.assertIn("/api/v1/memberships/me/", response.data["paths"])
+        self.assertIn(
+            "/api/v1/memberships/me/onboarding/",
+            response.data["paths"],
+        )
+        self.assertIn(
+            "/api/v1/memberships/{membership_id}/identity/",
+            response.data["paths"],
+        )
 
     def test_member_area_requires_authentication(self):
         self.client.force_authenticate(user=None)
@@ -328,6 +353,8 @@ class MembershipLifecycleApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNone(response.data["membership"])
+        self.assertFalse(response.data["onboarding_required"])
+        self.assertFalse(response.data["can_access_member_features"])
         self.assertEqual(response.data["active_scanner_assignments"], [])
 
     def test_member_area_returns_only_the_current_accounts_safe_membership(self):
@@ -357,21 +384,78 @@ class MembershipLifecycleApiTests(APITestCase):
         self.assertNotIn("assigned_by", membership["current_assignment"])
         self.assertNotIn("end_reason", membership["assignment_history"][0])
         self.assertNotIn("user", membership)
+        self.assertFalse(membership["national_id_collected"])
+        self.assertTrue(response.data["onboarding_required"])
+        self.assertFalse(response.data["can_access_member_features"])
+
+    def test_self_onboarding_requires_an_accepted_membership(self):
+        response = self.complete_self_onboarding(user=self.ordinary_user)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("membership", response.data)
+
+    def test_self_onboarding_rejects_invalid_or_duplicate_national_id(self):
+        self.admit_candidate()
+        invalid_response = self.complete_self_onboarding(
+            national_id_number="invalid-id"
+        )
+        valid_response = self.complete_self_onboarding()
+        self.admit_candidate(user=self.other_candidate)
+        duplicate_response = self.complete_self_onboarding(
+            user=self.other_candidate,
+            national_id_number="ab123456",
+        )
+
+        self.assertEqual(invalid_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(valid_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            duplicate_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        other_membership = Membership.objects.get(user=self.other_candidate)
+        self.assertEqual(
+            other_membership.status,
+            MembershipStatus.PENDING_ONBOARDING,
+        )
+        self.assertFalse(
+            MemberIdentity.objects.filter(membership=other_membership).exists()
+        )
+
+    def test_protected_identity_read_requires_hr_or_account_administrator(self):
+        creation = self.admit_candidate()
+        membership_id = creation.data["id"]
+        self.complete_self_onboarding()
+        identity_url = f"/api/v1/memberships/{membership_id}/identity/"
+
+        candidate_response = self.client.get(identity_url)
+        self.client.force_authenticate(self.ordinary_user)
+        ordinary_response = self.client.get(identity_url)
+        self.client.force_authenticate(self.hr_manager)
+        hr_response = self.client.get(identity_url)
+        self.client.force_authenticate(self.account_administrator)
+        administrator_response = self.client.get(identity_url)
+
+        self.assertEqual(candidate_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(ordinary_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(hr_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(administrator_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(hr_response.data["national_id_number"], "AB123456")
+        read_records = AuditRecord.objects.filter(
+            membership_id=membership_id,
+            action=AuditAction.NATIONAL_ID_VIEWED,
+        )
+        self.assertEqual(read_records.count(), 2)
+        self.assertTrue(
+            all(
+                "AB123456" not in str(record.new_state)
+                for record in read_records
+            )
+        )
 
     def test_member_area_lists_only_active_upcoming_scanner_assignments(self):
         creation = self.admit_candidate()
         membership_id = creation.data["id"]
-        onboarding_url = f"/api/v1/memberships/{membership_id}/onboarding/"
-        self.client.patch(
-            onboarding_url,
-            {"status": OnboardingStatus.IN_PROGRESS},
-            format="json",
-        )
-        self.client.patch(
-            onboarding_url,
-            {"status": OnboardingStatus.COMPLETED},
-            format="json",
-        )
+        self.complete_self_onboarding()
         membership = Membership.objects.get(pk=membership_id)
         now = timezone.now()
         upcoming_event = Event.objects.create(

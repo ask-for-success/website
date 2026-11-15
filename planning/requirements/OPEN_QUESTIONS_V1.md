@@ -8,12 +8,6 @@ A question remains here only while an answer is required before implementing the
 
 Can users change their own email address? If yes, must the new address be verified?
 
-## Recruitment and membership
-
-### Q-020 — Administrator scope for national ID
-
-Does national ID access belong to the global `account_administrator`, or will there be a future department-scoped administrator with access only to their department?
-
 ## Events
 
 ### Q-007 — Capacity with manual approval

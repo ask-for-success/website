@@ -7,14 +7,23 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.permissions import CanManageHr
+from apps.accounts.permissions import CanManageHr, CanViewSensitiveIdentity
+from apps.audit.models import AuditAction, AuditDomain
+from apps.audit.services import record_audit_event
 from apps.events.models import EventScanner, PublicationStatus
 
-from .models import MemberAssignment, Membership, MembershipStatus
+from .models import (
+    MemberAssignment,
+    MemberIdentity,
+    Membership,
+    MembershipStatus,
+    OnboardingStatus,
+)
 from .serializers import (
     ExistingAccountAdmissionSerializer,
     MemberDepartureSerializer,
     MemberAreaSummarySerializer,
+    MemberIdentitySerializer,
     MemberTransferSerializer,
     MembershipDetailSerializer,
     MembershipInvitationAcceptSerializer,
@@ -22,6 +31,7 @@ from .serializers import (
     MembershipInvitationResultSerializer,
     MembershipListSerializer,
     OnboardingStatusUpdateSerializer,
+    SelfOnboardingSerializer,
 )
 
 
@@ -35,6 +45,7 @@ def membership_queryset():
     return Membership.objects.select_related(
         "user",
         "onboarding",
+        "identity",
     ).prefetch_related(
         Prefetch(
             "assignments",
@@ -45,6 +56,40 @@ def membership_queryset():
             ).order_by("-starts_at"),
         )
     )
+
+
+def member_area_summary_data(membership):
+    scanner_assignments = EventScanner.objects.none()
+    can_access_member_features = bool(
+        membership
+        and membership.status == MembershipStatus.ACTIVE
+        and membership.onboarding.status == OnboardingStatus.COMPLETED
+    )
+    onboarding_required = bool(
+        membership
+        and membership.status == MembershipStatus.PENDING_ONBOARDING
+        and membership.onboarding.status != OnboardingStatus.COMPLETED
+    )
+    if can_access_member_features:
+        scanner_assignments = (
+            EventScanner.objects.select_related("event")
+            .filter(
+                membership=membership,
+                is_active=True,
+                event__ends_at__gte=timezone.now(),
+                event__publication_status__in=(
+                    PublicationStatus.DRAFT,
+                    PublicationStatus.PUBLISHED,
+                ),
+            )
+            .order_by("event__starts_at", "assigned_at")
+        )
+    return {
+        "membership": membership,
+        "onboarding_required": onboarding_required,
+        "can_access_member_features": can_access_member_features,
+        "active_scanner_assignments": scanner_assignments,
+    }
 
 
 class MembershipListView(generics.ListAPIView):
@@ -136,6 +181,9 @@ class MyMembershipSummaryView(APIView):
         description=(
             "Returns the authenticated account's membership, onboarding, safe "
             "assignment history, and active upcoming event-scanner assignments. "
+            "onboarding_required tells the frontend to show the mandatory "
+            "onboarding action, while can_access_member_features remains false "
+            "until onboarding is complete. "
             "Accounts without membership receive a successful response with a "
             "null membership. HR-only fields are excluded."
         ),
@@ -146,27 +194,78 @@ class MyMembershipSummaryView(APIView):
     )
     def get(self, request):
         membership = membership_queryset().filter(user=request.user).first()
-        scanner_assignments = EventScanner.objects.none()
-        if membership and membership.status == MembershipStatus.ACTIVE:
-            scanner_assignments = (
-                EventScanner.objects.select_related("event")
-                .filter(
-                    membership=membership,
-                    is_active=True,
-                    event__ends_at__gte=timezone.now(),
-                    event__publication_status__in=(
-                        PublicationStatus.DRAFT,
-                        PublicationStatus.PUBLISHED,
-                    ),
-                )
-                .order_by("event__starts_at", "assigned_at")
-            )
+        return Response(
+            MemberAreaSummarySerializer(
+                member_area_summary_data(membership)
+            ).data
+        )
 
-        response_data = {
-            "membership": membership,
-            "active_scanner_assignments": scanner_assignments,
-        }
-        return Response(MemberAreaSummarySerializer(response_data).data)
+
+class MyMembershipOnboardingView(APIView):
+    @extend_schema(
+        tags=["Memberships"],
+        summary="Complete the current member's mandatory onboarding",
+        description=(
+            "The authenticated accepted member submits their national ID number. "
+            "The number is never returned in this response and no identity "
+            "document is accepted. Successful validation completes onboarding "
+            "and activates membership atomically."
+        ),
+        request=SelfOnboardingSerializer,
+        responses={
+            200: MemberAreaSummarySerializer,
+            400: OpenApiResponse(description="Invalid onboarding submission."),
+            401: OpenApiResponse(description="Authentication required."),
+        },
+    )
+    def post(self, request):
+        serializer = SelfOnboardingSerializer(
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        membership = serializer.save()
+        membership = membership_queryset().get(pk=membership.pk)
+        return Response(
+            MemberAreaSummarySerializer(
+                member_area_summary_data(membership)
+            ).data
+        )
+
+
+class MembershipIdentityView(APIView):
+    permission_classes = (CanViewSensitiveIdentity,)
+
+    @extend_schema(
+        tags=["Memberships"],
+        summary="View a member's protected national ID number",
+        description=(
+            "Returns the complete national ID number only to an HR-authorized "
+            "content manager, account administrator, or superuser. Every "
+            "successful read is explicitly audited without copying the number "
+            "into the audit record."
+        ),
+        responses={
+            200: MemberIdentitySerializer,
+            403: OpenApiResponse(
+                description="HR or account-administrator access required."
+            ),
+            404: OpenApiResponse(description="Identity record not found."),
+        },
+    )
+    def get(self, request, membership_id):
+        identity = get_object_or_404(
+            MemberIdentity.objects.select_related("membership"),
+            membership_id=membership_id,
+        )
+        record_audit_event(
+            domain=AuditDomain.MEMBERSHIP,
+            action=AuditAction.NATIONAL_ID_VIEWED,
+            actor=request.user,
+            membership=identity.membership,
+            new_state={"national_id_collected": True},
+        )
+        return Response(MemberIdentitySerializer(identity).data)
 
 
 class ExistingAccountAdmissionView(APIView):
@@ -237,8 +336,9 @@ class MembershipOnboardingView(APIView):
         tags=["Memberships"],
         summary="Update membership onboarding state",
         description=(
-            "Starts or completes onboarding. Completion activates the membership. "
-            "Completed onboarding cannot be reopened."
+            "Allows HR to mark onboarding as in progress. Only the authenticated "
+            "member can complete onboarding and activate membership through the "
+            "self-service onboarding endpoint."
         ),
         request=OnboardingStatusUpdateSerializer,
         responses={

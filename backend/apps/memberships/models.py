@@ -2,6 +2,7 @@ import uuid
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
 
@@ -73,6 +74,43 @@ class MembershipOnboarding(models.Model):
 
     def __str__(self) -> str:
         return f"Onboarding for {self.membership.user.email}"
+
+
+class MemberIdentity(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    membership = models.OneToOneField(
+        Membership,
+        on_delete=models.PROTECT,
+        related_name="identity",
+    )
+    national_id_number = models.CharField(
+        max_length=20,
+        unique=True,
+        validators=(
+            RegexValidator(
+                regex=r"^[A-Za-z0-9]{4,20}$",
+                message=(
+                    "National ID number must contain 4 to 20 letters and digits."
+                ),
+            ),
+        ),
+    )
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "member_identities"
+
+    def clean(self) -> None:
+        super().clean()
+        self.national_id_number = self.national_id_number.strip().upper()
+
+    def save(self, *args, **kwargs):
+        self.national_id_number = self.national_id_number.strip().upper()
+        return super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"Protected identity for {self.membership.user.email}"
 
 
 class MembershipInvitation(models.Model):

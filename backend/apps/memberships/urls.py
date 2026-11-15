@@ -6,8 +6,10 @@ from .views import (
     MembershipDetailView,
     MembershipInvitationAcceptView,
     MembershipInvitationCreateView,
+    MembershipIdentityView,
     MembershipListView,
     MyMembershipSummaryView,
+    MyMembershipOnboardingView,
     MembershipOnboardingView,
     MembershipTransferView,
 )
@@ -18,6 +20,11 @@ app_name = "memberships"
 urlpatterns = [
     path("", MembershipListView.as_view(), name="list"),
     path("me/", MyMembershipSummaryView.as_view(), name="my_summary"),
+    path(
+        "me/onboarding/",
+        MyMembershipOnboardingView.as_view(),
+        name="my_onboarding",
+    ),
     path(
         "admissions/",
         ExistingAccountAdmissionView.as_view(),
@@ -37,6 +44,11 @@ urlpatterns = [
         "<uuid:membership_id>/",
         MembershipDetailView.as_view(),
         name="detail",
+    ),
+    path(
+        "<uuid:membership_id>/identity/",
+        MembershipIdentityView.as_view(),
+        name="identity",
     ),
     path(
         "<uuid:membership_id>/transfers/",

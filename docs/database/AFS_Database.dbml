@@ -64,6 +64,16 @@ Table membership_onboarding {
   Note: "Onboarding belongs to the membership and is not repeated after a department transfer."
 }
 
+Table member_identities {
+  id uuid [pk, not null]
+  membership_id uuid [not null, unique, ref: > memberships.id]
+  national_id_number varchar(20) [not null, unique, note: "Protected complete value; never copied into audit records or ordinary member responses"]
+  submitted_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "One protected identity record per membership. Values are normalized to uppercase."
+}
+
 Table member_assignments {
   id uuid [pk, not null]
   membership_id uuid [not null, ref: > memberships.id]

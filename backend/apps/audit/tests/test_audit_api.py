@@ -4,12 +4,12 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
-from apps.memberships.models import MembershipStatus, OnboardingStatus
+from apps.memberships.models import MembershipStatus
 from apps.memberships.operations import (
     admit_existing_account,
+    complete_self_onboarding,
     record_member_departure,
     transfer_member,
-    update_onboarding_status,
 )
 from apps.organization.models import Department, Position
 from apps.recruitment.models import (
@@ -114,15 +114,9 @@ class AuditApiTests(APITestCase):
 
     def test_membership_lifecycle_creates_state_and_reason_records(self):
         membership = self.admit_candidate()
-        update_onboarding_status(
-            membership=membership,
-            new_status=OnboardingStatus.IN_PROGRESS,
-            updated_by=self.hr_manager,
-        )
-        update_onboarding_status(
-            membership=membership,
-            new_status=OnboardingStatus.COMPLETED,
-            updated_by=self.hr_manager,
+        complete_self_onboarding(
+            user=self.candidate,
+            national_id_number="AB987654",
         )
         transfer_member(
             membership=membership,
@@ -147,7 +141,10 @@ class AuditApiTests(APITestCase):
             records.filter(
                 action=AuditAction.ONBOARDING_STATUS_CHANGED
             ).count(),
-            2,
+            1,
+        )
+        self.assertTrue(
+            records.filter(action=AuditAction.NATIONAL_ID_SUBMITTED).exists()
         )
         transfer = records.get(action=AuditAction.MEMBERSHIP_TRANSFERRED)
         self.assertEqual(transfer.reason, "Moved to coordinate outreach")

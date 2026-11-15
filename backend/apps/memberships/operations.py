@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from django.contrib.auth import password_validation
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -16,6 +16,7 @@ from apps.organization.models import Department, Position
 
 from .models import (
     MemberAssignment,
+    MemberIdentity,
     Membership,
     MembershipInvitation,
     MembershipInvitationStatus,
@@ -265,35 +266,126 @@ def update_onboarding_status(
             )
         return onboarding
 
-    if new_status == OnboardingStatus.COMPLETED:
-        if onboarding.status == OnboardingStatus.NOT_STARTED:
-            raise ValidationError(
-                {"status": "Onboarding must be started before completion."}
-            )
-        if onboarding.status != OnboardingStatus.COMPLETED:
-            onboarding.status = OnboardingStatus.COMPLETED
-            onboarding.completed_at = now
-            onboarding.save(
-                update_fields=("status", "completed_at", "updated_at")
-            )
-            locked_membership.status = MembershipStatus.ACTIVE
-            locked_membership.save(update_fields=("status", "updated_at"))
-            record_audit_event(
-                domain=AuditDomain.MEMBERSHIP,
-                action=AuditAction.ONBOARDING_STATUS_CHANGED,
-                actor=updated_by,
-                membership=locked_membership,
-                previous_state=previous_state,
-                new_state={
-                    "membership_status": locked_membership.status,
-                    "onboarding_status": onboarding.status,
-                },
-            )
-        return onboarding
-
     raise ValidationError(
-        {"status": "Status must be in_progress or completed."}
+        {
+            "status": (
+                "HR can mark onboarding as in progress, but only the member can "
+                "complete their own onboarding."
+            )
+        }
     )
+
+
+@transaction.atomic
+def complete_self_onboarding(
+    *,
+    user: User,
+    national_id_number: str,
+) -> Membership:
+    try:
+        locked_membership = (
+            Membership.objects.select_for_update(of=("self",))
+            .select_related("user")
+            .get(user=user)
+        )
+    except Membership.DoesNotExist as error:
+        raise ValidationError(
+            {"membership": "This account does not have an accepted membership."}
+        ) from error
+
+    if not locked_membership.user.is_active:
+        raise ValidationError(
+            {"membership": "The account must be active before onboarding."}
+        )
+    if locked_membership.status == MembershipStatus.INACTIVE:
+        raise ValidationError(
+            {"membership": "An inactive membership cannot complete onboarding."}
+        )
+    if locked_membership.status == MembershipStatus.ACTIVE:
+        raise ValidationError(
+            {"membership": "This membership is already active."}
+        )
+
+    onboarding = MembershipOnboarding.objects.select_for_update().get(
+        membership=locked_membership
+    )
+    if onboarding.status == OnboardingStatus.COMPLETED:
+        raise ValidationError({"onboarding": "Onboarding is already complete."})
+    if MemberIdentity.objects.filter(membership=locked_membership).exists():
+        raise ValidationError(
+            {"national_id_number": "National ID was already submitted."}
+        )
+
+    normalized_number = national_id_number.strip().upper()
+    if MemberIdentity.objects.filter(
+        national_id_number=normalized_number
+    ).exists():
+        raise ValidationError(
+            {
+                "national_id_number": (
+                    "This national ID number is already registered."
+                )
+            }
+        )
+
+    identity = MemberIdentity(
+        membership=locked_membership,
+        national_id_number=normalized_number,
+    )
+    identity.full_clean()
+    try:
+        identity.save()
+    except IntegrityError as error:
+        raise ValidationError(
+            {
+                "national_id_number": (
+                    "This national ID number is already registered."
+                )
+            }
+        ) from error
+
+    now = timezone.now()
+    previous_state = {
+        "membership_status": locked_membership.status,
+        "onboarding_status": onboarding.status,
+        "national_id_collected": False,
+    }
+    if onboarding.started_at is None:
+        onboarding.started_at = now
+    onboarding.status = OnboardingStatus.COMPLETED
+    onboarding.completed_at = now
+    onboarding.save(
+        update_fields=(
+            "status",
+            "started_at",
+            "completed_at",
+            "updated_at",
+        )
+    )
+    locked_membership.status = MembershipStatus.ACTIVE
+    locked_membership.save(update_fields=("status", "updated_at"))
+
+    record_audit_event(
+        domain=AuditDomain.MEMBERSHIP,
+        action=AuditAction.NATIONAL_ID_SUBMITTED,
+        actor=user,
+        membership=locked_membership,
+        previous_state={"national_id_collected": False},
+        new_state={"national_id_collected": True},
+    )
+    record_audit_event(
+        domain=AuditDomain.MEMBERSHIP,
+        action=AuditAction.ONBOARDING_STATUS_CHANGED,
+        actor=user,
+        membership=locked_membership,
+        previous_state=previous_state,
+        new_state={
+            "membership_status": locked_membership.status,
+            "onboarding_status": onboarding.status,
+            "national_id_collected": True,
+        },
+    )
+    return locked_membership
 
 
 @transaction.atomic

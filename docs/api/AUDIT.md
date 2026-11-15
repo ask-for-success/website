@@ -39,17 +39,19 @@ The current implementation records:
 - every recruitment application status change;
 - membership creation and reactivation;
 - onboarding status changes;
+- national ID submission without recording the number;
+- every authorized read of a complete national ID number, without recording the number;
 - department and position transfers;
 - member departures;
 - membership invitation creation and acceptance.
 
 Acceptance records correlate the recruitment application and the membership created or reactivated by the same transaction.
 
-Failed requests are not recorded as completed actions. Ordinary read-only page and list requests are intentionally excluded to prevent routine browsing from overwhelming the operational log. Sensitive read auditing, such as future national ID access, must be added explicitly when that data is implemented.
+Failed requests are not recorded as completed actions. Ordinary read-only page and list requests are intentionally excluded to prevent routine browsing from overwhelming the operational log. Complete national ID reads are the explicit sensitive-read exception and always create an audit record.
 
 ## Stored data
 
-Each record contains its domain, action, actor, target type and identifier, normalized API operation, HTTP method, request path without query parameters, related application or membership when applicable, previous state, new state, optional reason, and timestamp. State snapshots use only approved status and assignment identifiers.
+Each record contains its domain, action, actor, target type and identifier, normalized API operation, HTTP method, request path without query parameters, related application or membership when applicable, previous state, new state, optional reason, and timestamp. State snapshots use only approved status, assignment identifiers, and the non-sensitive `national_id_collected` boolean.
 
 Audit records never contain passwords, password hashes, invitation tokens, token hashes, CV files or contents, national ID values, or arbitrary request payloads. Unsupported state fields are rejected by model validation.
 

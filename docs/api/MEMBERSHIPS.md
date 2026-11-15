@@ -29,11 +29,13 @@ This self-service endpoint requires authentication but does not require HR permi
 The response contains:
 
 - `membership`, including status, onboarding state, current department and position, and a safe assignment-history summary;
+- `onboarding_required`, which tells the frontend to show the mandatory onboarding action after login;
+- `can_access_member_features`, which remains false until onboarding is completed and membership is active;
 - `active_scanner_assignments`, containing active current or upcoming events where the member may scan QR tickets.
 
 An account without membership receives `200` with `membership: null` and an empty scanner-assignment list. Pending and inactive members can see their own membership and onboarding state, but scanner assignments are returned only while the membership is active. Ended events, archived events, and inactive scanner assignments are excluded.
 
-The self-service representation intentionally excludes the member's account record, assignment actors, internal transfer and departure reasons, other members, invitation data, HR notes, and private recruitment records.
+The self-service representation intentionally excludes the member's account record, complete national ID number, assignment actors, internal transfer and departure reasons, other members, invitation data, HR notes, and private recruitment records. `national_id_collected` reports only whether the required value exists.
 
 ## Admit an existing account
 
@@ -49,17 +51,39 @@ The account must be active, the department and position must be active, and the 
 
 ## Onboarding and activation
 
-`PATCH /api/v1/memberships/{membership_id}/onboarding/`
+`POST /api/v1/memberships/me/onboarding/`
 
-The accepted transitions are:
+The authenticated accepted member submits:
 
-```text
-not_started -> in_progress -> completed
+```json
+{
+  "national_id_number": "AB123456"
+}
 ```
 
-Starting onboarding records `started_at`. Completing onboarding records `completed_at` and changes the membership from `pending_onboarding` to `active`. Onboarding cannot start until an invited account has completed account setup, and completed onboarding cannot be reopened.
+The value is normalized to uppercase and must contain 4 to 20 letters and digits. No identity-card image, scan, or document is accepted. A national ID number can belong to only one membership.
 
-National ID collection is not part of this endpoint. It remains deferred until its administrative access scope and audit requirements are approved.
+Successful submission atomically records the protected identity value, sets onboarding timestamps and state to `completed`, and changes membership from `pending_onboarding` to `active`. The login account remains active before onboarding so the candidate can reach this endpoint, but `can_access_member_features` remains false until completion. The complete number is never returned in the self-service response.
+
+Email is only a notification channel. If the candidate does not read the acceptance email, the frontend can still discover `onboarding_required: true` from `GET /api/v1/memberships/me/` after login.
+
+HR may mark the process as started through:
+
+`PATCH /api/v1/memberships/{membership_id}/onboarding/`
+
+The HR transition is:
+
+```text
+not_started -> in_progress
+```
+
+Only the member's self-service submission can complete onboarding and activate membership. Onboarding cannot start until an invited account has completed account setup, and completed onboarding cannot be reopened.
+
+## Protected national ID access
+
+`GET /api/v1/memberships/{membership_id}/identity/`
+
+The complete number is available only to an HR-authorized content manager, an account administrator, or a superuser. Every successful read creates a dedicated audit record. The number itself is never copied into audit state or ordinary membership responses.
 
 ## Department transfer
 

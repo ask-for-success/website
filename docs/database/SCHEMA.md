@@ -33,6 +33,8 @@ Each membership has at most one onboarding record. Onboarding belongs to the mem
 
 Admission starts the membership in `pending_onboarding`. Completing onboarding changes it to `active`. A recorded departure closes the current assignment and changes the membership to `inactive` while preserving the account and all history.
 
+The `member_identities` table stores exactly one protected national ID number per membership. The number is normalized to uppercase, globally unique, and never stored on the user table or inside audit state. Normal member and list responses expose only whether the number was collected; complete-value reads use a dedicated authorized and audited endpoint.
+
 An assignment links a membership to one department and one position. It records the assigning user, start date, optional end date, and closure reason. A partial unique PostgreSQL constraint guarantees only one active assignment per membership.
 
 All organization and membership tables, columns, constraints, models, and statuses use English identifiers.
@@ -89,7 +91,7 @@ The `audit_records` table stores immutable actor-centered activity across accoun
 
 At least one business target is required through a generic target, application, or membership. Application-decision records require an application, and membership-lifecycle records require a membership. Acceptance can reference both so the decision and resulting membership change remain correlated.
 
-Audit state snapshots accept only status, department, position, and assignment identifiers. Passwords, tokens, CV contents, national ID values, and arbitrary request payloads are structurally excluded. Business targets and actors use protected foreign keys so their audit history cannot be removed accidentally.
+Audit state snapshots accept only status, department, position, assignment identifiers, and the non-sensitive national-ID-collected boolean. Passwords, tokens, CV contents, national ID values, and arbitrary request payloads are structurally excluded. Business targets and actors use protected foreign keys so their audit history cannot be removed accidentally.
 
 ## Token infrastructure
 

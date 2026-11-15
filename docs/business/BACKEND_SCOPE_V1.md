@@ -51,13 +51,13 @@ An offer accepted by the candidate creates a membership linked to the applicant'
 
 Each active membership contains one department and one position. A person may have only one active placement at a time, while previous placements remain as history. A former member keeps the same account when applying again.
 
-Acceptance creates the membership record, but member-area access remains blocked until required onboarding is complete. National ID collection follows decision [D-010](../architecture/DECISIONS.md), and complete-value access follows decision [D-016](../architecture/DECISIONS.md).
+Acceptance creates the membership record, but member-area access remains blocked until required onboarding is complete. The accepted member logs in with the existing account and submits the national ID number through self-service onboarding. Successful validation activates membership immediately. National ID collection follows decision [D-010](../architecture/DECISIONS.md), and complete-value access follows decision [D-016](../architecture/DECISIONS.md).
 
 ## Member area
 
 The member area must provide a profile summary, upcoming events, internal announcements, and events for which the member has check-in permission.
 
-The implemented self-service membership summary is available to the authenticated account before activation so the person can see membership and onboarding state. Active scanner assignments appear only after membership activation. General upcoming events continue to use the public event API, while internal announcements remain subject to the important-content decision.
+The implemented self-service membership summary is available to the authenticated account before activation so the person can see membership and onboarding state. It exposes explicit onboarding-required and member-access booleans without returning the complete national ID number. Active scanner assignments appear only after membership activation. General upcoming events continue to use the public event API, while internal announcements remain subject to the important-content decision.
 
 Private messaging, replies to announcements, and automatic management access are outside V1.
 

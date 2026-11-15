@@ -80,7 +80,12 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Return safe current and previous assignments without HR-only actors or reasons.
 - [x] Return only active current or upcoming event-scanner assignments for active members.
 - [x] Return a stable null-membership response for authenticated non-members.
-- [ ] Add national ID only after its administrator scope and audit contract are approved.
+- [x] Add candidate-owned onboarding completion with immediate membership activation.
+- [x] Collect only the national ID number and reject identity-document uploads by design.
+- [x] Keep complete national ID values out of ordinary membership responses and audit state.
+- [x] Restrict complete national ID reads to HR-authorized managers, account administrators, and superusers.
+- [x] Audit national ID submission and every successful complete-value read.
+- [x] Expose stable onboarding-required and member-access booleans for the frontend login flow.
 
 ## Events and check-in
 
@@ -193,11 +198,10 @@ Do not install SeaweedFS or change the local development storage during the curr
 
 ## Next engineering task
 
-Implement national ID number collection during post-acceptance onboarding after confirming its administrator access boundary. No identity-document upload belongs in this workflow.
+Validate the candidate login and onboarding contract with the frontend: show mandatory onboarding whenever `onboarding_required` is true and unlock member features only when `can_access_member_features` is true.
 
 ## Next implementation
 
 1. Confirm recruitment, membership, news, gallery, and organization contracts with the frontend team through Swagger and Postman.
-2. Confirm national ID administrator scope, then add protected onboarding collection and audit behavior.
-3. Decide whether donation-intent records belong in V1 before adding donation forms.
-4. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.
+2. Decide whether donation-intent records belong in V1 before adding donation forms.
+3. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.

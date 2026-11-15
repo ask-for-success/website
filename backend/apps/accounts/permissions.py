@@ -39,3 +39,22 @@ class CanManageHr(BasePermission):
 
     def has_permission(self, request, view) -> bool:
         return is_hr_manager(request.user)
+
+
+def can_view_sensitive_identity(user) -> bool:
+    return bool(
+        user
+        and user.is_authenticated
+        and (
+            user.is_superuser
+            or is_hr_manager(user)
+            or user.has_perm("accounts.manage_accounts")
+        )
+    )
+
+
+class CanViewSensitiveIdentity(BasePermission):
+    message = "HR or account-administrator access is required."
+
+    def has_permission(self, request, view) -> bool:
+        return can_view_sensitive_identity(request.user)

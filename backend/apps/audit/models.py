@@ -51,6 +51,14 @@ class AuditAction(models.TextChoices):
         "membership.invitation_accepted",
         "Membership invitation accepted",
     )
+    NATIONAL_ID_SUBMITTED = (
+        "membership.national_id_submitted",
+        "National ID submitted",
+    )
+    NATIONAL_ID_VIEWED = (
+        "membership.national_id_viewed",
+        "National ID viewed",
+    )
 
 
 ALLOWED_STATE_KEYS = {
@@ -58,6 +66,7 @@ ALLOWED_STATE_KEYS = {
     "membership_status",
     "onboarding_status",
     "invitation_status",
+    "national_id_collected",
     "department_id",
     "position_id",
     "assignment_id",
@@ -158,6 +167,8 @@ class AuditRecord(models.Model):
             AuditAction.DEPARTURE_RECORDED,
             AuditAction.INVITATION_CREATED,
             AuditAction.INVITATION_ACCEPTED,
+            AuditAction.NATIONAL_ID_SUBMITTED,
+            AuditAction.NATIONAL_ID_VIEWED,
         }
         if self.action in membership_actions and not self.membership_id:
             raise ValidationError(
