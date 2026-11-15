@@ -33,7 +33,7 @@ Each membership has at most one onboarding record. Onboarding belongs to the mem
 
 An assignment links a membership to one department and one position. It records the assigning user, start date, optional end date, and closure reason. A partial unique PostgreSQL constraint guarantees only one active assignment per membership.
 
-The organization and membership database identifiers are legacy names and are scheduled for the next data-preserving English migration.
+All organization and membership tables, columns, constraints, models, and statuses use English identifiers.
 
 ## Membership invitations
 

@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
-from apps.adhesions.models import Membership, MembershipStatus
+from apps.memberships.models import Membership, MembershipStatus
 
 from ..models import (
     Event,

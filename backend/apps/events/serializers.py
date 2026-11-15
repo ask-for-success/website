@@ -3,7 +3,7 @@ from django.db import transaction
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from apps.adhesions.models import Membership
+from apps.memberships.models import Membership
 
 from .models import (
     Event,

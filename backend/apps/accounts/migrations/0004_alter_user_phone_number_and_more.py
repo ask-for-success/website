@@ -18,6 +18,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='user',
-            constraint=models.CheckConstraint(condition=models.Q(('is_active', False), models.Q(('phone_number__isnull', False), models.Q(('phone_number', ''), _negated=True)), _connector='OR'), name='utilisateurs_actifs_avec_telephone'),
+            constraint=models.CheckConstraint(condition=models.Q(('is_active', False), models.Q(('phone_number__isnull', False), models.Q(('phone_number', ''), _negated=True)), _connector='OR'), name='active_users_require_phone_number'),
         ),
     ]

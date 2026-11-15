@@ -40,9 +40,9 @@ INSTALLED_APPS = [
     "drf_spectacular_sidecar",
     "rest_framework_simplejwt.token_blacklist",
     "apps.accounts",
-    "apps.adhesions",
+    "apps.memberships",
     "apps.events",
-    "apps.organisation",
+    "apps.organization",
 ]
 
 MIDDLEWARE = [

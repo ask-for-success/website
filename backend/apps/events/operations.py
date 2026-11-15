@@ -11,7 +11,7 @@ from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from apps.adhesions.models import Membership, MembershipStatus
+from apps.memberships.models import Membership, MembershipStatus
 
 from .models import (
     Event,

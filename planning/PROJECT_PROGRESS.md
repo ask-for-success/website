@@ -64,7 +64,8 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Allow a missing phone number only for inactive invited accounts.
 - [x] Add invitation creation and acceptance APIs.
 - [x] Add automated tests and Swagger documentation.
-- [ ] Translate the remaining legacy organization and membership implementation into English.
+- [x] Translate organization and membership code, APIs, tables, fields, tests, and documentation into English.
+- [x] Apply and verify the clean English organization and membership schemas.
 - [ ] Add the remaining membership APIs and frontend contract.
 
 ## Events and check-in
@@ -86,7 +87,7 @@ This file records delivery status without duplicating requirements, database mod
 
 ## Next implementation
 
-1. Translate the older organization and membership modules into English without losing data.
-2. Build the news CMS with draft, published, and archived states.
-3. Define editable page sections before implementing page-content APIs.
-4. Configure the production email provider before external QR testing.
+1. Build the news CMS with draft, published, and archived states.
+2. Define editable page sections before implementing page-content APIs.
+3. Configure the production email provider before external QR testing.
+4. Confirm membership and event API contracts with the frontend team.

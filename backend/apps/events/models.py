@@ -6,7 +6,7 @@ from django.db import models
 from django.db.models.functions import Lower
 from django.utils import timezone
 
-from apps.adhesions.models import Membership, MembershipStatus
+from apps.memberships.models import Membership, MembershipStatus
 
 
 class PublicationStatus(models.TextChoices):

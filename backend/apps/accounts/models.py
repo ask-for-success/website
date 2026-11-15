@@ -53,7 +53,7 @@ class User(AbstractBaseUser, PermissionsMixin):
                         & ~models.Q(phone_number="")
                     )
                 ),
-                name="utilisateurs_actifs_avec_telephone",
+                name="active_users_require_phone_number",
             ),
         ]
 

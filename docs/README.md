@@ -10,7 +10,7 @@ This file is the single entry point for project documentation. Each subject has 
 | Read the raw OpenAPI schema | [OpenAPI schema](http://localhost:8000/api/schema/) |
 | Understand tokens and authentication | [Authentication guide](./api/AUTHENTICATION.md) |
 | Understand roles and permissions | [Authorization guide](./api/AUTHORIZATION.md) |
-| Understand membership invitations | [Membership guide](./api/ADHESIONS.md) |
+| Understand membership invitations | [Membership guide](./api/MEMBERSHIPS.md) |
 | Understand events, registrations, and check-in | [Events guide](./api/EVENTS.md) |
 | Test authentication manually | [Authentication Postman collection](./api/AFS_Authentication.postman_collection.json) |
 | Test roles and permissions manually | [Access-control Postman collection](./api/AFS_Access_Control.postman_collection.json) |
