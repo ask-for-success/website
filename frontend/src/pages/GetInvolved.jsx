@@ -15,10 +15,6 @@ import {
 export default function GetInvolved() {
   return (
     <>
-      {/* =====================================
-          HERO SECTION
-      ===================================== */}
-
       <section className="involved-hero">
         <div className="container">
           <h1 className="involved-hero-title">
@@ -59,11 +55,6 @@ export default function GetInvolved() {
           </div>
         </div>
       </section>
-
-      {/* =====================================
-          VOLUNTEER SECTION
-      ===================================== */}
-
       <section className="involved-volunteer" id="volunteer">
         <div className="container involved-volunteer-layout">
           {/* LEFT IMAGE */}
@@ -154,11 +145,6 @@ export default function GetInvolved() {
           </div>
         </div>
       </section>
-
-      {/* =====================================
-          PARTNER WITH AFS
-      ===================================== */}
-
       <section className="involved-partner" id="partner">
         <div className="container involved-partner-layout">
           {/* LEFT CONTENT */}
@@ -213,11 +199,6 @@ export default function GetInvolved() {
           </div>
         </div>
       </section>
-
-      {/* =====================================
-    MAKE A DONATION
-===================================== */}
-
       <section className="involved-donation" id="donate">
         <div className="container">
           <div className="involved-donation-header">
@@ -279,11 +260,6 @@ export default function GetInvolved() {
           </div>
         </div>
       </section>
-
-      {/* =====================================
-    FROM SIGN-UP TO FIRST EVENT
-===================================== */}
-
       <section className="involved-steps">
         <div className="container">
           <div className="involved-steps-header">

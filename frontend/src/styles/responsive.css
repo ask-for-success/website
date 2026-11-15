@@ -1,26 +1,95 @@
+/* Shared Navbar responsive layout */
+@media (max-width: 1200px) {
+  .site-header .navbar {
+    width: 96%;
+    min-height: 82px;
+    gap: 12px;
+    padding: 12px 22px;
+  }
+
+  .site-header .navbar-logo {
+    width: 95px;
+    height: 55px;
+  }
+
+  .site-header .nav-links {
+    position: static;
+    width: auto;
+    flex: 1 1 auto;
+    justify-content: space-between;
+    gap: 12px;
+    transform: none;
+  }
+
+  .site-header .nav-link {
+    font-size: 15px;
+  }
+
+  .site-header .navbar-actions {
+    gap: 12px;
+  }
+
+  .site-header .donate-button {
+    padding: 10px 22px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 700px) {
+  .site-header {
+    padding-top: 20px;
+  }
+
+  .site-header .navbar {
+    width: 96%;
+    min-height: 72px;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding: 12px 20px;
+    border-radius: 28px;
+  }
+
+  .site-header .navbar-logo {
+    width: 80px;
+    height: 44px;
+  }
+
+  .site-header .nav-links {
+    position: static;
+    order: 3;
+    width: 100%;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    gap: 8px;
+    overflow-x: auto;
+    transform: none;
+    scrollbar-width: none;
+  }
+
+  .site-header .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-header .nav-link {
+    flex: 0 0 auto;
+    font-size: 12px;
+  }
+
+  .site-header .navbar-actions {
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  .site-header .donate-button {
+    min-height: 36px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+}
+
 @media (max-width: 760px) {
   .container {
     width: min(var(--content-width), calc(100% - 36px));
-  }
-
-  .navbar {
-    min-height: 72px;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding-block: 12px;
-  }
-
-  .nav-links {
-    order: 3;
-    width: 100%;
-    justify-content: space-between;
-    gap: 12px;
-    overflow-x: auto;
-  }
-
-  .nav-link {
-    flex-shrink: 0;
-    font-size: 13px;
   }
 
   .nav-cta {
@@ -146,38 +215,12 @@
     min-height: 62px;
   }
 }
-/* Remove the unwanted line under Navbar */
-
-.site-header {
-  border: none !important;
-  border-bottom: none !important;
-  box-shadow: none !important;
-}
-
-body:has(.hero) .site-header {
-  border-bottom: none !important;
-}
-
 /* UNIFY NAVBAR AND HERO BACKGROUND */
 
 html,
 body,
 #root {
   background-color: #FFFFFF;
-}
-
-/* Remove the separate Navbar background */
-.site-header {
-  background: #FFFFFF;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-/* Home page Navbar blends into Hero */
-body:has(.hero) .site-header {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
 }
 
 /* Hero background */
@@ -189,13 +232,6 @@ body:has(.hero) .site-header {
 .hero::before {
   background-color: #A77BD2;
 }
-/* About page Navbar background */
-body:has(.about-hero) .site-header {
-  background: #FAF7FF;
-  border: none;
-  box-shadow: none;
-}
-
 /* =====================================
    UNIFY HOME PAGE BACKGROUND
 ===================================== */
@@ -219,18 +255,6 @@ body:has(.about-hero) .site-header {
    GET INVOLVED - UNIFIED BACKGROUND
 ========================================== */
 
-/* Background surrounding the Navbar */
-body:has(.involved-hero) .site-header {
-  background: #FAF7FF !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-/* Keep the rounded Navbar white */
-body:has(.involved-hero) .site-header .navbar {
-  background: #FFFFFF !important;
-}
-
 /* Match the Get Involved page */
 .involved-hero,
 .involved-volunteer,
@@ -238,4 +262,168 @@ body:has(.involved-hero) .site-header .navbar {
 .involved-donation,
 .involved-steps {
   background-color: #FAF7FF;
+}
+
+
+@media (max-width: 1100px) {
+  .news-page .container {
+    width: min(92%, 960px);
+  }
+
+  .news-page-heading {
+    grid-template-columns: 1fr 1fr;
+    gap: 36px;
+    margin-bottom: 72px;
+  }
+
+  .news-page-heading h1 {
+    font-size: 60px;
+  }
+
+  .news-page-heading p {
+    font-size: 20px;
+  }
+
+  .news-featured-story {
+    grid-template-columns: 1fr 0.9fr;
+    gap: 36px;
+  }
+
+  .news-featured-image {
+    height: 460px;
+  }
+
+  .news-featured-content h2 {
+    font-size: 38px;
+  }
+
+  .news-featured-excerpt {
+    font-size: 20px;
+  }
+
+  .news-latest-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: 40px;
+  }
+
+  .news-category-filters {
+    justify-content: flex-start;
+  }
+
+  .news-article-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .news-page .container {
+    width: calc(100% - 36px);
+  }
+
+  .news-hero {
+    padding-top: 32px;
+  }
+
+  .news-page-heading {
+    display: block;
+    margin-bottom: 36px;
+  }
+
+  .news-page-heading h1 {
+    font-size: clamp(48px, 13vw, 64px);
+  }
+
+  .news-page-heading p {
+    margin-top: 16px;
+    font-size: 18px;
+  }
+
+  .news-featured-story {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+  }
+
+  .news-featured-image {
+    height: min(72vw, 400px);
+    border-radius: 28px;
+  }
+
+  .news-featured-meta {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    font-size: 15px;
+  }
+
+  .news-featured-category {
+    min-height: 34px;
+    padding: 0 14px;
+    font-size: 14px;
+  }
+
+  .news-featured-content h2 {
+    margin-bottom: 16px;
+    font-size: 36px;
+  }
+
+  .news-featured-excerpt {
+    margin-bottom: 22px;
+    font-size: 18px;
+  }
+
+  .news-featured-link {
+    min-height: 48px;
+    font-size: 17px;
+  }
+
+  .news-latest-section {
+    padding: 72px 0 56px;
+  }
+
+  .news-latest-heading {
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .news-latest-heading h2 {
+    font-size: 40px;
+  }
+
+  .news-latest-heading p {
+    font-size: 16px;
+  }
+
+  .news-category-filters {
+    gap: 8px;
+  }
+
+  .news-category-filter {
+    min-height: 36px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .news-article-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .news-article-image {
+    height: min(65vw, 320px);
+  }
+
+  .news-article-content {
+    min-height: 0;
+    padding: 24px;
+  }
+
+  .news-article-content h3 {
+    font-size: 22px;
+  }
+
+  .news-pagination {
+    gap: 6px;
+    margin-top: 56px;
+  }
 }

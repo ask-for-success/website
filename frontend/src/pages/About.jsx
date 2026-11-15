@@ -48,11 +48,6 @@ export default function About() {
           </div>
         </div>
       </section>
-
-      {/* =====================================
-    OUR MISSION SECTION
-===================================== */}
-
       <section className="about-mission">
         {/* DECORATIVE CIRCLES */}
         <div className="mission-decoration mission-decoration-left">
@@ -83,11 +78,6 @@ export default function About() {
           </p>
         </div>
       </section>
-
-      {/* =====================================
-    WHAT DRIVES US FORWARD
-===================================== */}
-
       <section className="about-values">
         <div className="container">
           {/* SECTION HEADER */}
@@ -164,11 +154,6 @@ export default function About() {
         </div>
       </section>
       <StatsSection />
-
-      {/* =====================================
-    WHERE IT ALL BEGAN
-===================================== */}
-
       <section className="about-story">
         <div className="container about-story-layout">
           {/* LEFT - IMAGE */}
@@ -198,11 +183,6 @@ export default function About() {
           </div>
         </div>
       </section>
-
-      {/* =====================================
-    BE PART OF THE STORY
-===================================== */}
-
       <section className="about-join">
         <div className="container about-join-layout">
           {/* LEFT - CONTENT */}

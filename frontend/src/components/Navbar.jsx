@@ -1,7 +1,5 @@
 import React from 'react';
-import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Globe, ChevronDown } from 'lucide-react';
 
 const links = [
   { to: '/about', label: 'About' },
@@ -12,8 +10,6 @@ const links = [
 ];
 
 export default function Navbar() {
-  const [language, setLanguage] = useState('EN');
-
   return (
     <header className="site-header">
       <nav className="navbar container" aria-label="Main navigation">
@@ -44,22 +40,6 @@ export default function Navbar() {
 
         {/* RIGHT ACTIONS */}
         <div className="navbar-actions">
-          <div className="language-selector">
-            <Globe size={18} />
-
-            <select
-              aria-label="Select language"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            >
-              <option value="EN">EN</option>
-              <option value="FR">FR</option>
-              <option value="AR">AR</option>
-            </select>
-
-            <ChevronDown size={12} />
-          </div>
-
           <Link to="/get-involved" className="donate-button">
             Donate
           </Link>
