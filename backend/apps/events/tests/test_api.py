@@ -11,17 +11,23 @@ from apps.accounts.models import User
 from apps.memberships.models import Membership, MembershipStatus
 
 from ..models import (
+    EmailDeliveryStatus,
     Event,
+    EventNotificationType,
+    EventParticipantNotification,
     EventQuestion,
     EventQuestionOption,
     EventQuestionType,
     EventRegistration,
+    EventRegistrationSource,
+    EventRegistrationStatus,
     EventScanner,
     EventTicket,
     PublicationStatus,
     QrDeliveryStatus,
+    RegistrationCancellationSource,
 )
-from ..operations import create_event_registration
+from ..operations import build_cancellation_token, create_event_registration
 
 
 class EventTestDataMixin:
@@ -187,10 +193,15 @@ class EventApiTests(EventTestDataMixin, APITestCase):
         registration = EventRegistration.objects.get()
         self.assertEqual(registration.email, "visitor@example.com")
         self.assertEqual(registration.answers.count(), 4)
+        self.assertEqual(
+            registration.confirmation_email_status,
+            EmailDeliveryStatus.SENT,
+        )
         self.assertEqual(registration.ticket.delivery_status, QrDeliveryStatus.SENT)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["visitor@example.com"])
         self.assertEqual(mail.outbox[0].attachments[0][2], "image/png")
+        self.assertIn("/events/registrations/cancel?token=", mail.outbox[0].body)
 
     def test_same_email_cannot_register_twice(self):
         creation = self.create_event_through_api()
@@ -214,7 +225,7 @@ class EventApiTests(EventTestDataMixin, APITestCase):
         self.assertEqual(second_response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(EventRegistration.objects.count(), 1)
 
-    def test_event_without_qr_code_does_not_create_ticket(self):
+    def test_event_without_qr_code_sends_cancellation_link_without_ticket(self):
         creation = self.create_event_through_api(requires_qr_code=False)
         event = Event.objects.get(pk=creation.data["id"])
         self.client.force_authenticate(user=None)
@@ -227,7 +238,270 @@ class EventApiTests(EventTestDataMixin, APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertFalse(EventTicket.objects.exists())
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].attachments, [])
+        self.assertIn("/events/registrations/cancel?token=", mail.outbox[0].body)
+
+    def test_capacity_closes_registration_automatically(self):
+        creation = self.create_event_through_api(capacity=1)
+        event = Event.objects.get(pk=creation.data["id"])
+        self.client.force_authenticate(user=None)
+
+        first = self.client.post(
+            f"/api/v1/events/{event.id}/registrations/",
+            self.registration_payload(event),
+            format="json",
+        )
+        second_payload = self.registration_payload(event)
+        second_payload["email"] = "second@example.com"
+        second = self.client.post(
+            f"/api/v1/events/{event.id}/registrations/",
+            second_payload,
+            format="json",
+        )
+        detail = self.client.get(f"/api/v1/events/{event.id}/")
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(detail.data["active_registration_count"], 1)
+        self.assertEqual(detail.data["seats_remaining"], 0)
+        self.assertTrue(detail.data["is_registration_full"])
+        self.assertFalse(detail.data["is_registration_open"])
+
+    def test_self_cancellation_releases_capacity_and_allows_another_person(self):
+        creation = self.create_event_through_api(capacity=1)
+        event = Event.objects.get(pk=creation.data["id"])
+        self.client.force_authenticate(user=None)
+        first = self.client.post(
+            f"/api/v1/events/{event.id}/registrations/",
+            self.registration_payload(event),
+            format="json",
+        )
+        registration = EventRegistration.objects.get(pk=first.data["id"])
+
+        cancellation = self.client.post(
+            "/api/v1/events/registrations/cancel/",
+            {
+                "cancellation_token": build_cancellation_token(
+                    registration.id
+                )
+            },
+            format="json",
+        )
+        replacement_payload = self.registration_payload(event)
+        replacement_payload["email"] = "replacement@example.com"
+        replacement = self.client.post(
+            f"/api/v1/events/{event.id}/registrations/",
+            replacement_payload,
+            format="json",
+        )
+
+        self.assertEqual(cancellation.status_code, status.HTTP_200_OK)
+        self.assertEqual(replacement.status_code, status.HTTP_201_CREATED)
+        registration.refresh_from_db()
+        self.assertEqual(
+            registration.status,
+            EventRegistrationStatus.CANCELLED,
+        )
+        self.assertEqual(
+            registration.cancellation_source,
+            RegistrationCancellationSource.SELF_SERVICE,
+        )
+        self.assertEqual(event.active_registration_count(), 1)
+
+    def test_self_cancellation_is_blocked_during_final_24_hours(self):
+        starts_at = timezone.now() + timedelta(hours=20)
+        creation = self.create_event_through_api(
+            starts_at=starts_at.isoformat(),
+            ends_at=(starts_at + timedelta(hours=2)).isoformat(),
+        )
+        event = Event.objects.get(pk=creation.data["id"])
+        self.client.force_authenticate(user=None)
+        registration_response = self.client.post(
+            f"/api/v1/events/{event.id}/registrations/",
+            self.registration_payload(event),
+            format="json",
+        )
+        registration = EventRegistration.objects.get(
+            pk=registration_response.data["id"]
+        )
+
+        response = self.client.post(
+            "/api/v1/events/registrations/cancel/",
+            {"cancellation_token": build_cancellation_token(registration.id)},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        registration.refresh_from_db()
+        self.assertEqual(
+            registration.status,
+            EventRegistrationStatus.REGISTERED,
+        )
+
+    def test_content_manager_adds_manual_participant_and_email_is_sent(self):
+        creation = self.create_event_through_api(capacity=2)
+        event = Event.objects.get(pk=creation.data["id"])
+        payload = self.registration_payload(event)
+        payload["email"] = "manual-participant@example.com"
+
+        response = self.client.post(
+            f"/api/v1/events/{event.id}/registrations/manual/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        registration = EventRegistration.objects.get(pk=response.data["id"])
+        self.assertEqual(registration.source, EventRegistrationSource.MANUAL)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(
+            mail.outbox[0].to,
+            ["manual-participant@example.com"],
+        )
+
+    def test_manual_participant_cannot_exceed_capacity(self):
+        creation = self.create_event_through_api(capacity=1)
+        event = Event.objects.get(pk=creation.data["id"])
+        first_payload = self.registration_payload(event)
+        first_payload["email"] = "first-manual@example.com"
+        first = self.client.post(
+            f"/api/v1/events/{event.id}/registrations/manual/",
+            first_payload,
+            format="json",
+        )
+        second_payload = self.registration_payload(event)
+        second_payload["email"] = "second-manual@example.com"
+
+        second = self.client.post(
+            f"/api/v1/events/{event.id}/registrations/manual/",
+            second_payload,
+            format="json",
+        )
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(event.active_registration_count(), 1)
+
+    def test_reschedule_notifies_participant_and_attaches_same_qr_code(self):
+        creation = self.create_event_through_api()
+        event = Event.objects.get(pk=creation.data["id"])
+        self.client.force_authenticate(user=None)
+        registration_response = self.client.post(
+            f"/api/v1/events/{event.id}/registrations/",
+            self.registration_payload(event),
+            format="json",
+        )
+        original_attachment = mail.outbox[0].attachments[0][1]
+        ticket_hash = EventTicket.objects.get().qr_code_hash
+        new_start = event.starts_at + timedelta(days=5)
+        self.client.force_authenticate(self.content_manager)
+
+        response = self.client.post(
+            f"/api/v1/events/{event.id}/reschedule/",
+            {
+                "starts_at": new_start.isoformat(),
+                "ends_at": (new_start + timedelta(hours=3)).isoformat(),
+            },
+            format="json",
+        )
+
+        self.assertEqual(registration_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["notification_count"], 1)
+        self.assertEqual(response.data["sent_count"], 1)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(mail.outbox[1].attachments[0][1], original_attachment)
+        self.assertIn("has been rescheduled", mail.outbox[1].body)
+        self.assertEqual(EventTicket.objects.get().qr_code_hash, ticket_hash)
+        self.assertEqual(
+            EventParticipantNotification.objects.get().notification_type,
+            EventNotificationType.RESCHEDULED,
+        )
+
+    def test_direct_schedule_update_is_blocked_after_registration(self):
+        creation = self.create_event_through_api()
+        event = Event.objects.get(pk=creation.data["id"])
+        create_event_registration(
+            event=event,
+            email="registered@example.com",
+            answers=self.registration_payload(event)["answers"],
+        )
+        self.client.force_authenticate(self.content_manager)
+
+        response = self.client.patch(
+            f"/api/v1/events/{event.id}/",
+            {"starts_at": (event.starts_at + timedelta(days=1)).isoformat()},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_permanent_cancellation_invalidates_registrations_and_notifies(self):
+        creation = self.create_event_through_api()
+        event = Event.objects.get(pk=creation.data["id"])
+        self.client.force_authenticate(user=None)
+        registration_response = self.client.post(
+            f"/api/v1/events/{event.id}/registrations/",
+            self.registration_payload(event),
+            format="json",
+        )
+        mail.outbox.clear()
+        self.client.force_authenticate(self.content_manager)
+
+        response = self.client.post(
+            f"/api/v1/events/{event.id}/cancel/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(registration_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        event.refresh_from_db()
+        registration = EventRegistration.objects.get()
+        self.assertEqual(event.publication_status, PublicationStatus.CANCELLED)
+        self.assertEqual(
+            registration.status,
+            EventRegistrationStatus.CANCELLED,
+        )
+        self.assertEqual(
+            registration.cancellation_source,
+            RegistrationCancellationSource.EVENT_CANCELLED,
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("will no longer take place", mail.outbox[0].body)
+        notification = EventParticipantNotification.objects.get()
+        self.assertEqual(
+            notification.notification_type,
+            EventNotificationType.CANCELLED,
+        )
+        self.assertEqual(
+            notification.delivery_status,
+            EmailDeliveryStatus.SENT,
+        )
+
+    def test_lifecycle_notification_can_be_deliberately_disabled(self):
+        creation = self.create_event_through_api()
+        event = Event.objects.get(pk=creation.data["id"])
+        self.client.force_authenticate(user=None)
+        self.client.post(
+            f"/api/v1/events/{event.id}/registrations/",
+            self.registration_payload(event),
+            format="json",
+        )
+        mail.outbox.clear()
+        self.client.force_authenticate(self.content_manager)
+
+        response = self.client.post(
+            f"/api/v1/events/{event.id}/cancel/",
+            {"notify_participants": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["notification_count"], 0)
         self.assertEqual(len(mail.outbox), 0)
+        self.assertFalse(EventParticipantNotification.objects.exists())
 
     def test_required_questions_are_validated(self):
         creation = self.create_event_through_api()
@@ -337,6 +611,18 @@ class EventApiTests(EventTestDataMixin, APITestCase):
         )
         self.assertIn(
             "/api/v1/events/{event_id}/check-ins/",
+            response.data["paths"],
+        )
+        self.assertIn(
+            "/api/v1/events/{event_id}/reschedule/",
+            response.data["paths"],
+        )
+        self.assertIn(
+            "/api/v1/events/{event_id}/cancel/",
+            response.data["paths"],
+        )
+        self.assertIn(
+            "/api/v1/events/registrations/cancel/",
             response.data["paths"],
         )
 

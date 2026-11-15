@@ -6,7 +6,7 @@ This file records delivery status without duplicating requirements, database mod
 
 ## Current position
 
-- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, event foundation, public event registration, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, and immutable recruitment and membership audit records.
+- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, the complete event registration lifecycle, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, and immutable cross-domain audit records.
 - **Under review:** global roles, permissions, authentication behavior, and frontend contracts.
 - **In progress:** organization, membership, invitations, onboarding, recruitment frontend validation, and CMS frontend validation.
 - **Deferred to the final infrastructure phase:** self-hosted open-source file storage and Amazon SES production email configuration.
@@ -21,7 +21,7 @@ This file records delivery status without duplicating requirements, database mod
 | 4. Organization, membership, and onboarding | In progress | Membership lifecycle, assignments, and member access are validated. |
 | 5. Integrated recruitment | In progress | Forms, applications, interviews, and decisions are validated. |
 | 6. Content management | In progress | News, editable pages, and media are validated. |
-| 7. Events and check-in | In progress | Registration, tickets, delivery, and check-in are production-ready. |
+| 7. Events and check-in | Under review | Frontend confirms registration, capacity, cancellation, notification, ticket, and check-in contracts. |
 | 8. Administration and audit | In progress | Administration and traceability are validated. |
 | 9. Production services | Not started | Operational requirements are complete. |
 
@@ -99,6 +99,14 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Allow content managers to assign active members as event scanners.
 - [x] Limit scanner access to the assigned event.
 - [x] Make the first check-in unique and report later scans.
+- [x] Add optional event capacity and close registration automatically when full.
+- [x] Count only active registrations against capacity and release a place after cancellation.
+- [x] Send every participant a confirmation email with a secure cancellation link.
+- [x] Allow self-service cancellation only while more than twenty-four hours remain.
+- [x] Allow content managers to add participants without exceeding capacity.
+- [x] Add safe rescheduling with default participant notification and the same valid QR code.
+- [x] Add permanent event cancellation with default participant notification and registration invalidation.
+- [x] Retain per-participant lifecycle notification delivery state and errors.
 - [x] Translate event code, API fields, routes, tables, tests, Swagger, and documentation into English.
 - [x] Apply and verify the English event database schema.
 - [ ] Deferred: configure and validate Amazon SES in the final infrastructure phase.
@@ -212,10 +220,10 @@ Do not install SeaweedFS or change the local development storage during the curr
 
 ## Next engineering task
 
-Resolve and implement the remaining event capacity, participant cancellation, manual-participant, and event-cancellation rules.
+Validate the completed backend contracts with the frontend team, beginning with events, recruitment, membership, content, and donations. Keep production storage and email-provider integration deferred.
 
 ## Next implementation
 
 1. Confirm recruitment, membership, content, donations, events, and organization contracts with the frontend team through Swagger and Postman.
-2. Complete the remaining event lifecycle rules after product decisions are confirmed.
+2. Resolve the remaining important-content notification decision when its product behavior is defined.
 3. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.

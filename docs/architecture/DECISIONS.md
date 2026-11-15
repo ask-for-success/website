@@ -90,7 +90,7 @@ Every content manager can create and update events, build forms, view registrati
 
 Event registration is public and never creates an account. One email address can register only once per event, case-insensitively. Forms support short text, long text, email, phone, single choice, multiple choice, and yes/no questions.
 
-When QR check-in is enabled, the system creates and emails a secure ticket immediately after registration without manual approval. Only the QR token hash is stored. A content manager can assign any active member as a scanner for one event. The first valid scan records check-in; later scans report that the ticket is already checked in.
+When QR check-in is enabled, the system creates and emails a signed secure ticket immediately after registration without manual approval. Only the QR token hash is stored; the signature allows the backend to reproduce the same token for a reschedule notification. A content manager can assign any active member as a scanner for one event. The first valid scan records check-in; later scans report that the ticket is already checked in.
 
 ## D-022 — News and gallery CMS
 
@@ -185,3 +185,13 @@ Donation-interest records are part of V1. The public form has fixed fields for f
 The public response does not echo donor contact data. Content managers can list, search, filter, and read the immutable submissions through protected endpoints. CMS content managers may edit the donation section's explanatory content and CTA links, but they cannot change the operational form schema or rewrite submitted donor data.
 
 After the record is stored, the backend attempts an acknowledgement email telling the donor that the information was received and that the team will make contact later. Email delivery state and errors are retained; failure never deletes the business record. Amazon SES remains the selected production provider for the final infrastructure phase.
+
+## D-034 — Event capacity and lifecycle
+
+An event has an optional positive capacity. A null capacity is unlimited. Only active `registered` registrations consume places. Public and manager-created registrations are confirmed immediately, obey the same capacity and duplicate-email rules, and receive the same confirmation email. A manager cannot exceed capacity and must increase it before adding another participant.
+
+Every confirmation email contains a signed self-service cancellation link, including events without QR check-in. A participant may cancel only while more than twenty-four hours remain before the current event start time. Cancellation is blocked at exactly twenty-four hours and throughout the final twenty-four hours. Successful cancellation releases the place immediately.
+
+After registrations exist, schedule changes use the dedicated reschedule operation. Existing registrations and QR codes remain valid, the registration closing time moves with the event, and participant notification defaults to enabled. The notification contains the new schedule, a cancellation link using the new cutoff, and the same QR image when applicable.
+
+Permanent event cancellation changes the event state to `cancelled`, cancels every active registration, and invalidates check-in. Participant notification defaults to enabled and explains that the event will no longer occur. For either lifecycle operation, a content manager may deliberately disable notification. Delivery attempts and failures are stored without reversing the business operation.

@@ -11,6 +11,8 @@ docker compose run --rm backend python manage.py migrate
 
 The local API is available at `http://localhost:8000`.
 
+`AFS_PUBLIC_WEB_URL` defines the frontend origin used in secure event-cancellation links sent by email. Its local default is `http://localhost:3000`; production must set it to the public website origin.
+
 ## Inspect PostgreSQL with DBeaver
 
 The local database is published only on the Windows loopback interface. Create a PostgreSQL connection in DBeaver with these default development values:

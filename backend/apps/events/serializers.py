@@ -7,15 +7,21 @@ from apps.memberships.models import Membership
 
 from .models import (
     Event,
+    EventNotificationType,
     EventQuestion,
     EventQuestionOption,
     EventQuestionType,
     EventRegistration,
+    EventRegistrationSource,
     EventScanner,
     EventTicket,
     QrDeliveryStatus,
 )
-from .operations import assign_event_scanner, create_event_registration
+from .operations import (
+    assign_event_scanner,
+    cancel_event_registration,
+    create_event_registration,
+)
 
 
 def convert_validation_error(error: DjangoValidationError):
@@ -71,6 +77,10 @@ class EventQuestionSerializer(serializers.ModelSerializer):
 
 class EventSerializer(serializers.ModelSerializer):
     questions = EventQuestionSerializer(many=True, required=False)
+    active_registration_count = serializers.SerializerMethodField()
+    seats_remaining = serializers.SerializerMethodField()
+    is_registration_full = serializers.SerializerMethodField()
+    is_registration_open = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -87,13 +97,44 @@ class EventSerializer(serializers.ModelSerializer):
             "ends_at",
             "registration_opens_at",
             "registration_closes_at",
+            "capacity",
             "publication_status",
             "requires_qr_code",
+            "cancelled_at",
+            "active_registration_count",
+            "seats_remaining",
+            "is_registration_full",
+            "is_registration_open",
             "questions",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "created_at", "updated_at")
+        read_only_fields = (
+            "id",
+            "cancelled_at",
+            "active_registration_count",
+            "seats_remaining",
+            "is_registration_full",
+            "is_registration_open",
+            "created_at",
+            "updated_at",
+        )
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_active_registration_count(self, instance):
+        return instance.active_registration_count()
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_seats_remaining(self, instance):
+        return instance.seats_remaining()
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_registration_full(self, instance):
+        return instance.is_registration_full()
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_registration_open(self, instance):
+        return instance.accepts_registrations()
 
     def validate_questions(self, questions):
         display_orders = [question["display_order"] for question in questions]
@@ -122,6 +163,10 @@ class EventSerializer(serializers.ModelSerializer):
                 "registration_closes_at",
                 instance.registration_closes_at if instance else None,
             ),
+            "capacity": data.get(
+                "capacity",
+                instance.capacity if instance else None,
+            ),
         }
         temporary_event = Event(
             title=data.get("title", instance.title if instance else ""),
@@ -141,6 +186,28 @@ class EventSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 convert_validation_error(error)
             ) from error
+        publication_status = data.get(
+            "publication_status",
+            instance.publication_status if instance else None,
+        )
+        if publication_status == "cancelled":
+            raise serializers.ValidationError(
+                {
+                    "publication_status": (
+                        "Use the permanent-cancellation endpoint to cancel an event."
+                    )
+                }
+            )
+        if instance and "capacity" in data and data["capacity"] is not None:
+            if data["capacity"] < instance.active_registration_count():
+                raise serializers.ValidationError(
+                    {
+                        "capacity": (
+                            "Capacity cannot be lower than the number of active "
+                            "registrations."
+                        )
+                    }
+                )
         return data
 
     @staticmethod
@@ -187,6 +254,16 @@ class EventSerializer(serializers.ModelSerializer):
                 errors["requires_qr_code"] = (
                     "The QR-code requirement cannot change after a registration exists."
                 )
+            schedule_fields = {
+                "starts_at",
+                "ends_at",
+                "registration_opens_at",
+                "registration_closes_at",
+            }
+            if schedule_fields.intersection(validated_data):
+                errors["starts_at"] = (
+                    "Use the reschedule endpoint after registrations exist."
+                )
             if errors:
                 raise serializers.ValidationError(errors)
         for attribute, value in validated_data.items():
@@ -213,6 +290,24 @@ class EventRegistrationCreateSerializer(serializers.Serializer):
             return create_event_registration(
                 event=self.context["event"],
                 answers=validated_data.pop("answers", []),
+                source=EventRegistrationSource.PUBLIC,
+                **validated_data,
+            )
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(
+                convert_validation_error(error)
+            ) from error
+
+
+class ManualEventRegistrationCreateSerializer(
+    EventRegistrationCreateSerializer
+):
+    def create(self, validated_data):
+        try:
+            return create_event_registration(
+                event=self.context["event"],
+                answers=validated_data.pop("answers", []),
+                source=EventRegistrationSource.MANUAL,
                 **validated_data,
             )
         except DjangoValidationError as error:
@@ -236,6 +331,7 @@ class EventRegistrationSerializer(serializers.ModelSerializer):
     qr_delivery_status = serializers.SerializerMethodField()
     is_checked_in = serializers.SerializerMethodField()
     checked_in_at = serializers.SerializerMethodField()
+    cancellation_deadline = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = EventRegistration
@@ -243,7 +339,14 @@ class EventRegistrationSerializer(serializers.ModelSerializer):
             "id",
             "email",
             "status",
+            "source",
             "registered_at",
+            "confirmation_email_status",
+            "confirmation_email_sent_at",
+            "confirmation_email_error",
+            "cancelled_at",
+            "cancellation_source",
+            "cancellation_deadline",
             "requires_qr_code",
             "qr_delivery_status",
             "is_checked_in",
@@ -279,6 +382,52 @@ class EventRegistrationSerializer(serializers.ModelSerializer):
         if ticket and hasattr(ticket, "check_in"):
             return ticket.check_in.checked_in_at
         return None
+
+
+class EventRegistrationCancellationSerializer(serializers.Serializer):
+    cancellation_token = serializers.CharField(trim_whitespace=False)
+
+    def create(self, validated_data):
+        try:
+            return cancel_event_registration(**validated_data)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(
+                convert_validation_error(error)
+            ) from error
+
+
+class EventRegistrationCancellationResultSerializer(serializers.Serializer):
+    registration_id = serializers.UUIDField()
+    event_id = serializers.UUIDField()
+    status = serializers.ChoiceField(choices=("cancelled",))
+    cancelled_at = serializers.DateTimeField()
+
+
+class EventRescheduleSerializer(serializers.Serializer):
+    starts_at = serializers.DateTimeField()
+    ends_at = serializers.DateTimeField()
+    notify_participants = serializers.BooleanField(default=True)
+
+    def validate(self, attributes):
+        if attributes["ends_at"] <= attributes["starts_at"]:
+            raise serializers.ValidationError(
+                {"ends_at": "The end time must be after the start time."}
+            )
+        return attributes
+
+
+class EventCancellationSerializer(serializers.Serializer):
+    notify_participants = serializers.BooleanField(default=True)
+
+
+class EventLifecycleResultSerializer(serializers.Serializer):
+    event = EventSerializer()
+    notification_type = serializers.ChoiceField(
+        choices=EventNotificationType.choices
+    )
+    notification_count = serializers.IntegerField()
+    sent_count = serializers.IntegerField()
+    failed_count = serializers.IntegerField()
 
 
 class EventScannerAssignmentSerializer(serializers.Serializer):

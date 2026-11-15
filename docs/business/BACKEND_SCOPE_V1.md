@@ -76,17 +76,19 @@ V1 includes a fixed public donation-interest form for cash or goods. The form st
 V1 must support:
 
 - public registration without automatic account creation;
-- automatic or manual approval;
-- capacity and duplicate enforcement;
-- an opaque QR ticket for an approved registration;
+- immediate confirmation for public and manager-created registrations;
+- automatic capacity closure and case-insensitive duplicate enforcement;
+- secure self-service cancellation until twenty-four hours before the event;
+- safe rescheduling and permanent cancellation with participant notification;
+- a signed opaque QR ticket when check-in is required;
 - event-specific check-in permission;
-- manual participant lookup;
+- manager-created participants with the same confirmation workflow;
 - attendance stored separately from approval;
 - operational metrics and exports.
 
 ## Notifications and email
 
-Internal announcements are one-way. Transactional email supports current donation acknowledgements, recruitment decisions, and QR delivery through the configured Django email interface. Password recovery, invitation delivery, production Amazon SES configuration, and delivery retries remain later work. An existing-account acceptance email directs the user to onboarding. A new invited account receives secure account-setup and onboarding instructions. Email failure must never reverse a business decision or delete a stored submission.
+Internal announcements are one-way. Transactional email supports current donation acknowledgements, recruitment decisions, event confirmations, QR delivery, rescheduling, and event cancellation through the configured Django email interface. Password recovery, invitation delivery, production Amazon SES configuration, and delivery retries remain later work. An existing-account acceptance email directs the user to onboarding. A new invited account receives secure account-setup and onboarding instructions. Email failure must never reverse a business decision or delete a stored submission.
 
 ## Audit
 

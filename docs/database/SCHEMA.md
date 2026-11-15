@@ -45,13 +45,15 @@ An invitation links a membership, invited account, and authorized creator. It st
 
 ## Events
 
-The `events` table stores title, content, location, event dates, registration window, publication status, QR requirement, creator, and timestamps.
+The `events` table stores title, content, location, event dates, registration window, optional capacity, publication status, QR requirement, cancellation actor and time, creator, and timestamps. A null capacity means unlimited places; only active registrations consume capacity.
 
 The `event_questions` and `event_question_options` tables define ordered dynamic forms. Supported types are short text, long text, email, phone, single choice, multiple choice, and yes/no.
 
-The `event_registrations` table stores public registrations without creating user accounts. A functional unique constraint on event and lowercase email prevents duplicate registrations case-insensitively. `event_answers` stores one answer per registration and question.
+The `event_registrations` table stores public and manager-created registrations without creating user accounts. It records the source, confirmation-email delivery, cancellation time, and cancellation source. A functional unique constraint on event and lowercase email prevents duplicate registrations case-insensitively. `event_answers` stores one answer per registration and question.
 
-The `event_tickets` table exists only for registrations requiring QR check-in. It stores the QR token hash, delivery status, sent timestamp, and delivery error. The raw token is never stored.
+The `event_tickets` table exists only for registrations requiring QR check-in. It stores the signed QR token hash, delivery status, sent timestamp, and delivery error. The raw token is never stored, but its deterministic signature allows the same value to be reproduced for reschedule notifications.
+
+The `event_participant_notifications` table records reschedule and permanent-cancellation email attempts per registration, including delivery state, sent time, and error. A failed notification never reverses the event lifecycle operation.
 
 The `event_scanners` table assigns an active membership to one event. `event_check_ins` records the scanner and time. Its one-to-one ticket relationship guarantees one effective check-in per ticket.
 

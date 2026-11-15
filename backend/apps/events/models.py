@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -20,6 +21,7 @@ def validate_event_image_size(image) -> None:
 class PublicationStatus(models.TextChoices):
     DRAFT = "draft", "Draft"
     PUBLISHED = "published", "Published"
+    CANCELLED = "cancelled", "Cancelled"
     ARCHIVED = "archived", "Archived"
 
 
@@ -38,10 +40,31 @@ class EventRegistrationStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelled"
 
 
+class EventRegistrationSource(models.TextChoices):
+    PUBLIC = "public", "Public"
+    MANUAL = "manual", "Manual"
+
+
+class RegistrationCancellationSource(models.TextChoices):
+    SELF_SERVICE = "self_service", "Self-service"
+    EVENT_CANCELLED = "event_cancelled", "Event cancelled"
+
+
 class QrDeliveryStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     SENT = "sent", "Sent"
     FAILED = "failed", "Failed"
+
+
+class EmailDeliveryStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    SENT = "sent", "Sent"
+    FAILED = "failed", "Failed"
+
+
+class EventNotificationType(models.TextChoices):
+    RESCHEDULED = "rescheduled", "Rescheduled"
+    CANCELLED = "cancelled", "Cancelled"
 
 
 class Event(models.Model):
@@ -62,12 +85,21 @@ class Event(models.Model):
     ends_at = models.DateTimeField()
     registration_opens_at = models.DateTimeField(null=True, blank=True)
     registration_closes_at = models.DateTimeField(null=True, blank=True)
+    capacity = models.PositiveIntegerField(null=True, blank=True)
     publication_status = models.CharField(
         max_length=16,
         choices=PublicationStatus.choices,
         default=PublicationStatus.DRAFT,
     )
     requires_qr_code = models.BooleanField(default=False)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="cancelled_events",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -94,6 +126,10 @@ class Event(models.Model):
             raise ValidationError(
                 {"ends_at": "The end time must be after the start time."}
             )
+        if self.capacity is not None and self.capacity < 1:
+            raise ValidationError(
+                {"capacity": "Capacity must be at least one."}
+            )
         if (
             self.registration_opens_at
             and self.registration_closes_at
@@ -118,6 +154,20 @@ class Event(models.Model):
                 }
             )
 
+    def active_registration_count(self) -> int:
+        return self.registrations.filter(
+            status=EventRegistrationStatus.REGISTERED
+        ).count()
+
+    def seats_remaining(self) -> int | None:
+        if self.capacity is None:
+            return None
+        return max(self.capacity - self.active_registration_count(), 0)
+
+    def is_registration_full(self) -> bool:
+        remaining = self.seats_remaining()
+        return remaining is not None and remaining == 0
+
     def accepts_registrations(self) -> bool:
         now = timezone.now()
         if self.publication_status != PublicationStatus.PUBLISHED:
@@ -125,7 +175,7 @@ class Event(models.Model):
         if self.registration_opens_at and now < self.registration_opens_at:
             return False
         closes_at = self.registration_closes_at or self.starts_at
-        return now < closes_at
+        return now < closes_at and not self.is_registration_full()
 
     def __str__(self) -> str:
         return self.title
@@ -214,6 +264,24 @@ class EventRegistration(models.Model):
         choices=EventRegistrationStatus.choices,
         default=EventRegistrationStatus.REGISTERED,
     )
+    source = models.CharField(
+        max_length=16,
+        choices=EventRegistrationSource.choices,
+        default=EventRegistrationSource.PUBLIC,
+    )
+    confirmation_email_status = models.CharField(
+        max_length=16,
+        choices=EmailDeliveryStatus.choices,
+        default=EmailDeliveryStatus.PENDING,
+    )
+    confirmation_email_sent_at = models.DateTimeField(null=True, blank=True)
+    confirmation_email_error = models.TextField(blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancellation_source = models.CharField(
+        max_length=24,
+        choices=RegistrationCancellationSource.choices,
+        blank=True,
+    )
     registered_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -227,6 +295,12 @@ class EventRegistration(models.Model):
                 name="event_registrations_email_unique_case_insensitive",
             ),
         )
+        indexes = (
+            models.Index(
+                fields=("event", "status"),
+                name="event_registration_status_idx",
+            ),
+        )
 
     def clean(self) -> None:
         super().clean()
@@ -234,6 +308,10 @@ class EventRegistration(models.Model):
 
     def __str__(self) -> str:
         return f"{self.event.title} - {self.email}"
+
+    @property
+    def cancellation_deadline(self):
+        return self.event.starts_at - timedelta(hours=24)
 
 
 class EventAnswer(models.Model):
@@ -296,6 +374,60 @@ class EventTicket(models.Model):
 
     def __str__(self) -> str:
         return f"Ticket for {self.registration.email}"
+
+
+class EventParticipantNotification(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.PROTECT,
+        related_name="participant_notifications",
+    )
+    registration = models.ForeignKey(
+        EventRegistration,
+        on_delete=models.PROTECT,
+        related_name="participant_notifications",
+    )
+    notification_type = models.CharField(
+        max_length=16,
+        choices=EventNotificationType.choices,
+    )
+    delivery_status = models.CharField(
+        max_length=16,
+        choices=EmailDeliveryStatus.choices,
+        default=EmailDeliveryStatus.PENDING,
+    )
+    sent_at = models.DateTimeField(null=True, blank=True)
+    delivery_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "event_participant_notifications"
+        ordering = ("-created_at", "-id")
+        indexes = (
+            models.Index(
+                fields=("event", "notification_type", "created_at"),
+                name="event_notification_type_idx",
+            ),
+        )
+
+    def clean(self) -> None:
+        super().clean()
+        if (
+            self.event_id
+            and self.registration_id
+            and self.registration.event_id != self.event_id
+        ):
+            raise ValidationError(
+                {"registration": "The registration must belong to the event."}
+            )
+
+    def __str__(self) -> str:
+        return (
+            f"{self.get_notification_type_display()} - "
+            f"{self.registration.email}"
+        )
 
 
 class EventScanner(models.Model):

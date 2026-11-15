@@ -118,6 +118,7 @@ EMAIL_PORT = int(os.getenv("AFS_EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.getenv("AFS_EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("AFS_EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = get_boolean("AFS_EMAIL_USE_TLS", True)
+PUBLIC_WEB_URL = os.getenv("AFS_PUBLIC_WEB_URL", "http://localhost:3000")
 
 STATIC_URL = "static/"
 MEDIA_URL = "/media/"
@@ -159,9 +160,7 @@ SPECTACULAR_SETTINGS = {
         "ContentPublicationStatus": "apps.content.models.PublicationStatus",
         "ContentSection": "apps.content.models.ContentSection",
         "DonationType": "apps.donations.models.DonationType",
-        "DonationAcknowledgementEmailStatus": (
-            "apps.donations.models.AcknowledgementEmailStatus"
-        ),
+        "EmailDeliveryStatus": "apps.events.models.EmailDeliveryStatus",
         "InvolvementFeatureSection": (
             "apps.content.models.InvolvementFeatureSection"
         ),
@@ -172,6 +171,12 @@ SPECTACULAR_SETTINGS = {
         ),
         "EventRegistrationStatus": (
             "apps.events.models.EventRegistrationStatus"
+        ),
+        "EventRegistrationSource": (
+            "apps.events.models.EventRegistrationSource"
+        ),
+        "EventNotificationType": (
+            "apps.events.models.EventNotificationType"
         ),
         "RecruitmentFormStatus": (
             "apps.recruitment.models.RecruitmentFormStatus"

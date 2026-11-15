@@ -8,23 +8,40 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import is_content_manager
 
-from .models import Event, EventScanner, PublicationStatus
+from .models import (
+    Event,
+    EventNotificationType,
+    EventScanner,
+    PublicationStatus,
+)
 from .operations import (
+    EventLifecycleResult,
     check_in_event_registration,
+    permanently_cancel_event,
     remove_event_scanner,
-    send_qr_code_email,
+    reschedule_event,
+    send_event_participant_notifications,
+    send_registration_confirmation_email,
 )
 from .permissions import IsContentManager
 from .serializers import (
     EventCheckInInputSerializer,
     EventCheckInOutputSerializer,
+    EventCancellationSerializer,
+    EventLifecycleResultSerializer,
+    EventRegistrationCancellationResultSerializer,
+    EventRegistrationCancellationSerializer,
     EventRegistrationCreateSerializer,
     EventRegistrationSerializer,
+    EventRescheduleSerializer,
     EventScannerAssignmentSerializer,
     EventScannerSerializer,
     EventSerializer,
+    ManualEventRegistrationCreateSerializer,
     convert_validation_error,
 )
+
+
 class EventListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "GET":
@@ -162,7 +179,9 @@ class EventRegistrationsView(APIView):
         summary="Register for an event without an account",
         description=(
             "Registers one email address for the event. When QR check-in is "
-            "enabled, the ticket is generated and emailed automatically."
+            "enabled, the ticket is generated automatically. Every successful "
+            "registration receives a confirmation email with a secure "
+            "cancellation link."
         ),
         request=EventRegistrationCreateSerializer,
         responses={
@@ -178,12 +197,180 @@ class EventRegistrationsView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         result = serializer.save()
-        send_qr_code_email(result)
+        send_registration_confirmation_email(result)
         result.registration.refresh_from_db()
         return Response(
             EventRegistrationSerializer(result.registration).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class ManualEventRegistrationView(APIView):
+    permission_classes = (IsContentManager,)
+
+    @extend_schema(
+        tags=["Events"],
+        summary="Add an event participant manually",
+        description=(
+            "Applies the same required answers, duplicate rule, registration "
+            "window, and capacity limit as public registration. The participant "
+            "receives the normal confirmation email and cancellation link."
+        ),
+        request=ManualEventRegistrationCreateSerializer,
+        responses={
+            201: EventRegistrationSerializer,
+            400: OpenApiResponse(description="Invalid registration."),
+            403: OpenApiResponse(description="Content manager access required."),
+        },
+    )
+    def post(self, request, event_id):
+        event = get_object_or_404(Event, pk=event_id)
+        serializer = ManualEventRegistrationCreateSerializer(
+            data=request.data,
+            context={"event": event},
+        )
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        send_registration_confirmation_email(result)
+        result.registration.refresh_from_db()
+        return Response(
+            EventRegistrationSerializer(result.registration).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class EventRegistrationCancellationView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    @extend_schema(
+        tags=["Events"],
+        summary="Cancel an event registration using its secure link",
+        description=(
+            "Cancels one registration and releases its seat. Self-service "
+            "cancellation closes exactly 24 hours before the event starts."
+        ),
+        request=EventRegistrationCancellationSerializer,
+        responses={
+            200: EventRegistrationCancellationResultSerializer,
+            400: OpenApiResponse(
+                description="Invalid, expired, late, or already-used link."
+            ),
+        },
+    )
+    def post(self, request):
+        serializer = EventRegistrationCancellationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        registration = serializer.save()
+        response_data = {
+            "registration_id": registration.id,
+            "event_id": registration.event_id,
+            "status": registration.status,
+            "cancelled_at": registration.cancelled_at,
+        }
+        return Response(
+            EventRegistrationCancellationResultSerializer(response_data).data
+        )
+
+
+class EventRescheduleView(APIView):
+    permission_classes = (IsContentManager,)
+
+    @extend_schema(
+        tags=["Events"],
+        summary="Reschedule an event",
+        description=(
+            "Changes the event schedule and shifts its registration closing "
+            "time by the same interval. Participant notification defaults to "
+            "true. Existing registrations and QR codes remain valid."
+        ),
+        request=EventRescheduleSerializer,
+        responses={
+            200: EventLifecycleResultSerializer,
+            400: OpenApiResponse(description="Invalid reschedule operation."),
+            403: OpenApiResponse(description="Content manager access required."),
+        },
+    )
+    def post(self, request, event_id):
+        event = get_object_or_404(Event, pk=event_id)
+        serializer = EventRescheduleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        values = dict(serializer.validated_data)
+        notify_participants = values.pop("notify_participants")
+        try:
+            event, registrations = reschedule_event(
+                event=event,
+                updated_by=request.user,
+                **values,
+            )
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(
+                convert_validation_error(error)
+            ) from error
+
+        if notify_participants:
+            result = send_event_participant_notifications(
+                event=event,
+                registrations=registrations,
+                notification_type=EventNotificationType.RESCHEDULED,
+            )
+        else:
+            result = EventLifecycleResult(
+                event=event,
+                notification_type=EventNotificationType.RESCHEDULED,
+                notification_count=0,
+                sent_count=0,
+                failed_count=0,
+            )
+        return Response(EventLifecycleResultSerializer(result).data)
+
+
+class EventCancellationView(APIView):
+    permission_classes = (IsContentManager,)
+
+    @extend_schema(
+        tags=["Events"],
+        summary="Permanently cancel an event",
+        description=(
+            "Permanently cancels the event and all active registrations. "
+            "Tickets and cancellation links become invalid. Participant "
+            "notification defaults to true."
+        ),
+        request=EventCancellationSerializer,
+        responses={
+            200: EventLifecycleResultSerializer,
+            400: OpenApiResponse(description="Invalid cancellation operation."),
+            403: OpenApiResponse(description="Content manager access required."),
+        },
+    )
+    def post(self, request, event_id):
+        event = get_object_or_404(Event, pk=event_id)
+        serializer = EventCancellationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            event, registrations = permanently_cancel_event(
+                event=event,
+                cancelled_by=request.user,
+            )
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(
+                convert_validation_error(error)
+            ) from error
+
+        if serializer.validated_data["notify_participants"]:
+            result = send_event_participant_notifications(
+                event=event,
+                registrations=registrations,
+                notification_type=EventNotificationType.CANCELLED,
+            )
+        else:
+            result = EventLifecycleResult(
+                event=event,
+                notification_type=EventNotificationType.CANCELLED,
+                notification_count=0,
+                sent_count=0,
+                failed_count=0,
+            )
+        return Response(EventLifecycleResultSerializer(result).data)
 
 
 class EventScannersView(APIView):

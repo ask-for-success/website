@@ -4,6 +4,7 @@ from .models import (
     Event,
     EventAnswer,
     EventCheckIn,
+    EventParticipantNotification,
     EventQuestion,
     EventQuestionOption,
     EventRegistration,
@@ -23,6 +24,7 @@ class EventAdmin(admin.ModelAdmin):
         "title",
         "starts_at",
         "publication_status",
+        "capacity",
         "requires_qr_code",
         "created_by",
     )
@@ -46,13 +48,21 @@ class EventQuestionAdmin(admin.ModelAdmin):
 
 @admin.register(EventRegistration)
 class EventRegistrationAdmin(admin.ModelAdmin):
-    list_display = ("email", "event", "status", "registered_at")
-    list_filter = ("event", "status")
+    list_display = (
+        "email",
+        "event",
+        "status",
+        "source",
+        "confirmation_email_status",
+        "registered_at",
+    )
+    list_filter = ("event", "status", "source", "confirmation_email_status")
     search_fields = ("email", "event__title")
     ordering = ("-registered_at",)
 
 
 admin.site.register(EventAnswer)
 admin.site.register(EventTicket)
+admin.site.register(EventParticipantNotification)
 admin.site.register(EventScanner)
 admin.site.register(EventCheckIn)

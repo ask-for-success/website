@@ -8,16 +8,20 @@ Every user in the `content_manager` group can create and update events. No addit
 
 Main endpoints:
 
-- `GET /api/v1/events/`: lists published events publicly; content managers can also see drafts and archived events.
+- `GET /api/v1/events/`: lists published events publicly; content managers can also see drafts, cancelled events, and archived events.
 - `POST /api/v1/events/`: creates an event and its registration form.
 - `GET /api/v1/events/{event_id}/`: retrieves an event.
 - `PATCH /api/v1/events/{event_id}/`: updates an event as a content manager.
+- `POST /api/v1/events/{event_id}/reschedule/`: changes the event schedule safely.
+- `POST /api/v1/events/{event_id}/cancel/`: permanently cancels the event.
+
+Event records provide an optional positive `capacity`. A null capacity means unlimited places. The response exposes `active_registration_count`, `seats_remaining`, `is_registration_full`, and `is_registration_open`. Only registrations with the `registered` status consume capacity. Public and manual registration close automatically when no place remains.
 
 Event records also provide an optional cover image with required alternative text and an editable attendance label such as `Free for students`. Use `timing=upcoming` or `timing=past` on the event list. Upcoming events are returned chronologically; past events are returned newest first. The frontend calculates countdown values from `starts_at` rather than storing a countdown in the database.
 
 The form supports `short_text`, `long_text`, `email`, `phone`, `single_choice`, `multiple_choice`, and `yes_no`. Choice questions require at least two options. Question and option display orders must be unique.
 
-The form and the `requires_qr_code` setting cannot be replaced after the first registration. This protects existing answers and tickets from becoming inconsistent.
+The form and the `requires_qr_code` setting cannot be replaced after the first registration. Event dates must then be changed through the reschedule endpoint so participants can be notified consistently.
 
 ## Public registration
 
@@ -39,13 +43,71 @@ This endpoint is public. It requires an email address and all required form answ
 
 An email address can register only once for the same event, regardless of letter case. The same email can register for different events.
 
-Content managers can list registrations with `GET /api/v1/events/{event_id}/registrations/`. Each row contains the submitted answers, QR delivery status, and check-in status.
+Every successful registration is confirmed immediately. There is no pending approval state. The confirmation email always contains a secure cancellation link. When QR check-in is required, it also contains the QR image.
+
+## Manual participants
+
+`POST /api/v1/events/{event_id}/registrations/manual/`
+
+A content manager can add a participant using the same payload as public registration. The same required-answer, duplicate-email, registration-window, and capacity rules apply. A manual registration cannot exceed capacity; the manager must increase event capacity first. The participant receives the normal confirmation email and cancellation link.
+
+Content managers can list registrations with `GET /api/v1/events/{event_id}/registrations/`. Each row includes its `public` or `manual` source, submitted answers, registration status, confirmation-email state, cancellation state, QR delivery state, and check-in state.
+
+## Participant cancellation
+
+`POST /api/v1/events/registrations/cancel/`
+
+```json
+{
+  "cancellation_token": "token-from-the-confirmation-link"
+}
+```
+
+This public endpoint uses the signed token from the confirmation email. Cancellation is allowed only while more than 24 hours remain before the current event start time. It is blocked at exactly 24 hours and throughout the final 24 hours. A successful cancellation changes the registration to `cancelled` and immediately releases its place.
+
+The frontend route contained in the email reads the `token` query parameter and submits it as `cancellation_token` to this API endpoint.
 
 ## Ticket and email delivery
 
-When an event requires QR check-in, the server generates a random code, stores only its hash, and attaches the PNG image to an email sent immediately after registration. An email failure does not delete the registration; the ticket records the `failed` delivery status for later handling.
+When an event requires QR check-in, the server creates a signed opaque QR value, stores only its hash, and attaches its PNG image to the confirmation email. The deterministic signature lets the backend reproduce the same valid QR for a reschedule notification without storing the raw value.
+
+An email failure does not delete the registration. The registration records confirmation delivery as `failed`; a QR ticket also records its own failed delivery state for later handling.
 
 The local environment uses Django's console email backend by default, so messages and attachments appear in backend logs. Amazon SES is the selected production email provider. The existing `AFS_EMAIL_*` SMTP settings are its configuration boundary, but credentials and live delivery testing are deferred to the final infrastructure phase.
+
+## Rescheduling and permanent cancellation
+
+Reschedule an event with:
+
+```http
+POST /api/v1/events/{event_id}/reschedule/
+```
+
+```json
+{
+  "starts_at": "2026-12-10T09:00:00+01:00",
+  "ends_at": "2026-12-10T17:00:00+01:00",
+  "notify_participants": true
+}
+```
+
+Existing registrations remain active. The registration closing time moves by the same interval as the event. The default `notify_participants` value is `true`. Each active participant receives the new schedule, a cancellation link calculated from the new start time, and the same QR code when QR check-in is enabled.
+
+Permanently cancel an event with:
+
+```http
+POST /api/v1/events/{event_id}/cancel/
+```
+
+```json
+{
+  "notify_participants": true
+}
+```
+
+Permanent cancellation changes the event to `cancelled`, cancels every active registration, releases all places, and invalidates its registration links and QR check-in. Notification defaults to `true` and tells participants that the event will no longer occur. A content manager may deliberately set `notify_participants` to `false`; the API then records no notification attempts.
+
+Both lifecycle endpoints return `notification_count`, `sent_count`, and `failed_count`. Individual notification delivery records are retained for operations and troubleshooting.
 
 ## Event scanners
 
@@ -73,4 +135,4 @@ This assignment is not a global role. It grants scanner access only for the sele
 }
 ```
 
-The first valid scan returns `checked_in`. Another scan of the same ticket returns `already_checked_in` without creating a duplicate check-in. Unknown codes and codes belonging to another event are rejected.
+The first valid scan returns `checked_in`. Another scan of the same ticket returns `already_checked_in` without creating a duplicate check-in. Unknown codes, codes belonging to another event, cancelled registrations, and permanently cancelled events are rejected.

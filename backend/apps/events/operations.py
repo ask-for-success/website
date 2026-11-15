@@ -1,10 +1,12 @@
 import hashlib
-import secrets
+import uuid
 from dataclasses import dataclass
 from io import BytesIO
+from urllib.parse import quote
 
 import qrcode
 from django.conf import settings
+from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import EmailMessage
 from django.core.validators import validate_email
@@ -17,9 +19,15 @@ from .models import (
     Event,
     EventAnswer,
     EventCheckIn,
+    EmailDeliveryStatus,
+    EventNotificationType,
+    EventParticipantNotification,
     EventQuestionType,
     EventRegistration,
+    EventRegistrationSource,
     EventRegistrationStatus,
+    PublicationStatus,
+    RegistrationCancellationSource,
     EventScanner,
     EventTicket,
     QrDeliveryStatus,
@@ -39,6 +47,15 @@ class EventCheckInResult:
     check_in: EventCheckIn
 
 
+@dataclass(frozen=True)
+class EventLifecycleResult:
+    event: Event
+    notification_type: str
+    notification_count: int
+    sent_count: int
+    failed_count: int
+
+
 def ensure_content_manager(user) -> None:
     if user.is_superuser:
         return
@@ -50,6 +67,49 @@ def ensure_content_manager(user) -> None:
 
 def _hash_value(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _qr_signer() -> signing.Signer:
+    return signing.Signer(salt="events.qr.v1")
+
+
+def _cancellation_signer() -> signing.Signer:
+    return signing.Signer(salt="events.registration-cancellation.v1")
+
+
+def build_qr_code(ticket_id) -> str:
+    return _qr_signer().sign(str(ticket_id))
+
+
+def rebuild_qr_code(ticket: EventTicket) -> str | None:
+    qr_code = build_qr_code(ticket.id)
+    if _hash_value(qr_code) != ticket.qr_code_hash:
+        return None
+    return qr_code
+
+
+def build_cancellation_token(registration_id) -> str:
+    return _cancellation_signer().sign(str(registration_id))
+
+
+def build_cancellation_link(registration: EventRegistration) -> str:
+    token = quote(build_cancellation_token(registration.id), safe="")
+    base_url = settings.PUBLIC_WEB_URL.rstrip("/")
+    return f"{base_url}/events/registrations/cancel?token={token}"
+
+
+def _format_event_time(value) -> str:
+    return timezone.localtime(value).strftime("%A, %d %B %Y at %H:%M %Z")
+
+
+def _registration_window_is_open(event: Event) -> bool:
+    now = timezone.now()
+    if event.publication_status != PublicationStatus.PUBLISHED:
+        return False
+    if event.registration_opens_at and now < event.registration_opens_at:
+        return False
+    closes_at = event.registration_closes_at or event.starts_at
+    return now < closes_at
 
 
 def _is_empty(value) -> bool:
@@ -147,21 +207,30 @@ def create_event_registration(
     event: Event,
     email: str,
     answers: list[dict],
+    source: str = EventRegistrationSource.PUBLIC,
 ) -> EventRegistrationResult:
-    if not event.accepts_registrations():
-        raise ValidationError(
-            {"event": "Registration is not open for this event."}
-        )
-
     email = email.strip().lower()
     validate_email(email)
-    prepared_answers = _prepare_answers(event, answers)
     qr_code = None
     ticket = None
 
     try:
         with transaction.atomic():
-            registration = EventRegistration(event=event, email=email)
+            locked_event = Event.objects.select_for_update().get(pk=event.pk)
+            if not _registration_window_is_open(locked_event):
+                raise ValidationError(
+                    {"event": "Registration is not open for this event."}
+                )
+            if locked_event.is_registration_full():
+                raise ValidationError(
+                    {"event": "The event has reached its capacity."}
+                )
+            prepared_answers = _prepare_answers(locked_event, answers)
+            registration = EventRegistration(
+                event=locked_event,
+                email=email,
+                source=source,
+            )
             registration.full_clean()
             registration.save()
             for question, value in prepared_answers:
@@ -173,9 +242,11 @@ def create_event_registration(
                 answer.full_clean()
                 answer.save()
 
-            if event.requires_qr_code:
-                qr_code = secrets.token_urlsafe(32)
+            if locked_event.requires_qr_code:
+                ticket_id = uuid.uuid4()
+                qr_code = build_qr_code(ticket_id)
                 ticket = EventTicket.objects.create(
+                    id=ticket_id,
                     registration=registration,
                     qr_code_hash=_hash_value(qr_code),
                 )
@@ -191,47 +262,312 @@ def create_event_registration(
     )
 
 
-def send_qr_code_email(result: EventRegistrationResult) -> None:
-    if result.ticket is None or result.qr_code is None:
-        return
-
+def send_registration_confirmation_email(
+    result: EventRegistrationResult,
+) -> None:
+    registration = result.registration
     ticket = result.ticket
     event = result.registration.event
+    cancellation_link = build_cancellation_link(registration)
+    cancellation_deadline = _format_event_time(
+        registration.cancellation_deadline
+    )
     try:
-        image = qrcode.make(result.qr_code)
-        content = BytesIO()
-        image.save(content, format="PNG")
         message = EmailMessage(
             subject=f"Your registration for {event.title}",
             body=(
                 f"Your registration for {event.title} is confirmed.\n\n"
-                "Present the attached QR code when you arrive."
+                f"The event starts {_format_event_time(event.starts_at)}.\n\n"
+                "You can cancel until "
+                f"{cancellation_deadline} using this secure link:\n"
+                f"{cancellation_link}"
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[result.registration.email],
+            to=[registration.email],
         )
-        message.attach("qr-code.png", content.getvalue(), "image/png")
+        if ticket is not None and result.qr_code is not None:
+            image = qrcode.make(result.qr_code)
+            content = BytesIO()
+            image.save(content, format="PNG")
+            message.body += (
+                "\n\nPresent the attached QR code when you arrive."
+            )
+            message.attach("qr-code.png", content.getvalue(), "image/png")
         sent_count = message.send(fail_silently=False)
         if sent_count != 1:
             raise RuntimeError("The email service did not confirm delivery.")
     except Exception as error:
-        ticket.delivery_status = QrDeliveryStatus.FAILED
-        ticket.delivery_error = str(error)[:2000]
-        ticket.save(
-            update_fields=("delivery_status", "delivery_error", "updated_at")
+        registration.confirmation_email_status = EmailDeliveryStatus.FAILED
+        registration.confirmation_email_error = str(error)[:2000]
+        registration.save(
+            update_fields=(
+                "confirmation_email_status",
+                "confirmation_email_error",
+                "updated_at",
+            )
         )
+        if ticket is not None:
+            ticket.delivery_status = QrDeliveryStatus.FAILED
+            ticket.delivery_error = str(error)[:2000]
+            ticket.save(
+                update_fields=(
+                    "delivery_status",
+                    "delivery_error",
+                    "updated_at",
+                )
+            )
         return
 
-    ticket.delivery_status = QrDeliveryStatus.SENT
-    ticket.sent_at = timezone.now()
-    ticket.delivery_error = ""
-    ticket.save(
+    sent_at = timezone.now()
+    registration.confirmation_email_status = EmailDeliveryStatus.SENT
+    registration.confirmation_email_sent_at = sent_at
+    registration.confirmation_email_error = ""
+    registration.save(
         update_fields=(
-            "delivery_status",
-            "sent_at",
-            "delivery_error",
+            "confirmation_email_status",
+            "confirmation_email_sent_at",
+            "confirmation_email_error",
             "updated_at",
         )
+    )
+    if ticket is not None:
+        ticket.delivery_status = QrDeliveryStatus.SENT
+        ticket.sent_at = sent_at
+        ticket.delivery_error = ""
+        ticket.save(
+            update_fields=(
+                "delivery_status",
+                "sent_at",
+                "delivery_error",
+                "updated_at",
+            )
+        )
+
+
+@transaction.atomic
+def cancel_event_registration(*, cancellation_token: str) -> EventRegistration:
+    try:
+        registration_id = uuid.UUID(
+            _cancellation_signer().unsign(cancellation_token)
+        )
+    except (signing.BadSignature, ValueError) as error:
+        raise ValidationError(
+            {"cancellation_token": "This cancellation link is invalid."}
+        ) from error
+
+    try:
+        registration = (
+            EventRegistration.objects.select_for_update()
+            .select_related("event")
+            .get(pk=registration_id)
+        )
+    except EventRegistration.DoesNotExist as error:
+        raise ValidationError(
+            {"cancellation_token": "This cancellation link is invalid."}
+        ) from error
+
+    if registration.status == EventRegistrationStatus.CANCELLED:
+        raise ValidationError(
+            {"registration": "This registration is already cancelled."}
+        )
+    if timezone.now() >= registration.cancellation_deadline:
+        raise ValidationError(
+            {
+                "registration": (
+                    "Cancellation closes 24 hours before the event starts."
+                )
+            }
+        )
+
+    registration.status = EventRegistrationStatus.CANCELLED
+    registration.cancelled_at = timezone.now()
+    registration.cancellation_source = (
+        RegistrationCancellationSource.SELF_SERVICE
+    )
+    registration.save(
+        update_fields=(
+            "status",
+            "cancelled_at",
+            "cancellation_source",
+            "updated_at",
+        )
+    )
+    return registration
+
+
+@transaction.atomic
+def reschedule_event(
+    *,
+    event: Event,
+    starts_at,
+    ends_at,
+    updated_by,
+) -> tuple[Event, list[EventRegistration]]:
+    ensure_content_manager(updated_by)
+    locked_event = Event.objects.select_for_update().get(pk=event.pk)
+    if locked_event.publication_status == PublicationStatus.CANCELLED:
+        raise ValidationError(
+            {"event": "A permanently cancelled event cannot be rescheduled."}
+        )
+    if starts_at <= timezone.now():
+        raise ValidationError({"starts_at": "The new start time must be future."})
+
+    schedule_delta = starts_at - locked_event.starts_at
+    locked_event.starts_at = starts_at
+    locked_event.ends_at = ends_at
+    if locked_event.registration_closes_at:
+        locked_event.registration_closes_at += schedule_delta
+    locked_event.full_clean()
+    locked_event.save(
+        update_fields=(
+            "starts_at",
+            "ends_at",
+            "registration_closes_at",
+            "updated_at",
+        )
+    )
+    registrations = list(
+        locked_event.registrations.filter(
+            status=EventRegistrationStatus.REGISTERED
+        ).select_related("ticket")
+    )
+    return locked_event, registrations
+
+
+@transaction.atomic
+def permanently_cancel_event(
+    *,
+    event: Event,
+    cancelled_by,
+) -> tuple[Event, list[EventRegistration]]:
+    ensure_content_manager(cancelled_by)
+    locked_event = Event.objects.select_for_update().get(pk=event.pk)
+    if locked_event.publication_status == PublicationStatus.CANCELLED:
+        raise ValidationError({"event": "This event is already cancelled."})
+
+    registrations = list(
+        locked_event.registrations.filter(
+            status=EventRegistrationStatus.REGISTERED
+        ).select_related("ticket")
+    )
+    now = timezone.now()
+    locked_event.publication_status = PublicationStatus.CANCELLED
+    locked_event.cancelled_at = now
+    locked_event.cancelled_by = cancelled_by
+    locked_event.save(
+        update_fields=(
+            "publication_status",
+            "cancelled_at",
+            "cancelled_by",
+            "updated_at",
+        )
+    )
+    EventRegistration.objects.filter(
+        id__in=[registration.id for registration in registrations]
+    ).update(
+        status=EventRegistrationStatus.CANCELLED,
+        cancelled_at=now,
+        cancellation_source=RegistrationCancellationSource.EVENT_CANCELLED,
+        updated_at=now,
+    )
+    return locked_event, registrations
+
+
+def send_event_participant_notifications(
+    *,
+    event: Event,
+    registrations: list[EventRegistration],
+    notification_type: str,
+) -> EventLifecycleResult:
+    sent_count = 0
+    failed_count = 0
+    for registration in registrations:
+        notification = EventParticipantNotification.objects.create(
+            event=event,
+            registration=registration,
+            notification_type=notification_type,
+        )
+        try:
+            if notification_type == EventNotificationType.RESCHEDULED:
+                subject = f"New date for {event.title}"
+                body = (
+                    f"{event.title} has been rescheduled.\n\n"
+                    f"The new start time is {_format_event_time(event.starts_at)}.\n"
+                    f"The new end time is {_format_event_time(event.ends_at)}.\n\n"
+                    "Your registration and original QR code remain valid.\n\n"
+                    "You can cancel until "
+                    f"{_format_event_time(registration.cancellation_deadline)} "
+                    "using this secure link:\n"
+                    f"{build_cancellation_link(registration)}"
+                )
+            else:
+                subject = f"{event.title} has been cancelled"
+                body = (
+                    f"We are sorry, but {event.title} will no longer take place.\n\n"
+                    "Your registration and QR code are now cancelled."
+                )
+
+            message = EmailMessage(
+                subject=subject,
+                body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[registration.email],
+            )
+            if (
+                notification_type == EventNotificationType.RESCHEDULED
+                and event.requires_qr_code
+            ):
+                try:
+                    ticket = registration.ticket
+                except EventTicket.DoesNotExist:
+                    ticket = None
+                qr_code = rebuild_qr_code(ticket) if ticket else None
+                if qr_code:
+                    image = qrcode.make(qr_code)
+                    content = BytesIO()
+                    image.save(content, format="PNG")
+                    message.attach(
+                        "qr-code.png",
+                        content.getvalue(),
+                        "image/png",
+                    )
+            delivered = message.send(fail_silently=False)
+            if delivered != 1:
+                raise RuntimeError(
+                    "The email service did not confirm delivery."
+                )
+        except Exception as error:
+            failed_count += 1
+            notification.delivery_status = EmailDeliveryStatus.FAILED
+            notification.delivery_error = str(error)[:2000]
+            notification.save(
+                update_fields=(
+                    "delivery_status",
+                    "delivery_error",
+                    "updated_at",
+                )
+            )
+            continue
+
+        sent_count += 1
+        notification.delivery_status = EmailDeliveryStatus.SENT
+        notification.sent_at = timezone.now()
+        notification.delivery_error = ""
+        notification.save(
+            update_fields=(
+                "delivery_status",
+                "sent_at",
+                "delivery_error",
+                "updated_at",
+            )
+        )
+
+    return EventLifecycleResult(
+        event=event,
+        notification_type=notification_type,
+        notification_count=len(registrations),
+        sent_count=sent_count,
+        failed_count=failed_count,
     )
 
 
@@ -296,6 +632,10 @@ def check_in_event_registration(
     user,
 ) -> EventCheckInResult:
     ensure_event_scanner(event=event, user=user)
+    if event.publication_status == PublicationStatus.CANCELLED:
+        raise ValidationError(
+            {"event": "Check-in is unavailable for a cancelled event."}
+        )
     try:
         ticket = (
             EventTicket.objects.select_for_update()
