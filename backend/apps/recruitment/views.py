@@ -213,12 +213,20 @@ class RecruitmentApplicationCreateView(APIView):
         summary="Apply to a recruitment opportunity",
         description=(
             "Send a multipart request containing a PDF CV and an answers field. "
-            "The answers field is a JSON list of question_id and value objects."
+            "The answers field is a JSON list of question_id and value objects. "
+            "An account can apply only once to this opportunity, regardless of "
+            "the application's current or final status. A later application "
+            "requires a new recruitment opportunity."
         ),
         request=RecruitmentApplicationCreateSerializer,
         responses={
             201: CandidateApplicationSerializer,
-            400: OpenApiResponse(description="Invalid or duplicate application."),
+            400: OpenApiResponse(
+                description=(
+                    "Invalid application, or this account already applied to "
+                    "the opportunity."
+                )
+            ),
         },
     )
     def post(self, request, opportunity_id):

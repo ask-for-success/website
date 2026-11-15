@@ -34,6 +34,7 @@ V1 must support:
 - form locking after the first application;
 - published recruitment opportunities;
 - authenticated, transactional application submission with one private PDF CV and read-only answers;
+- one permanent application per account and opportunity, with later campaigns represented by new opportunities;
 - an independent lifecycle for each application;
 - simultaneous applications to multiple departments before acceptance;
 - HR notes that are never visible to applicants;

@@ -77,7 +77,7 @@ The `recruitment_forms` table connects one reusable form to one department and o
 
 The `recruitment_opportunities` table stores public campaign content, an opening window, publication state, and the selected form. Slugs are case-insensitively unique.
 
-The `recruitment_applications` table connects one authenticated applicant to one opportunity. It records workflow state; the HR actor and time for an offer; the candidate response time; separate offer-email delivery state; the final decision actor and time; and final-email delivery state. A database constraint permits only one application per applicant and opportunity. `recruitment_answers` stores one immutable JSON value per application question.
+The `recruitment_applications` table connects one authenticated applicant to one opportunity. It records workflow state; the HR actor and time for an offer; the candidate response time; separate offer-email delivery state; the final decision actor and time; and final-email delivery state. A database constraint permanently permits only one application per applicant and opportunity, regardless of application status. A later recruitment campaign uses a new opportunity rather than reopening or replacing the historical application. `recruitment_answers` stores one immutable JSON value per application question.
 
 Offer acceptance atomically creates or reactivates membership when required and changes the candidate's other non-final applications to `withdrawn`. Offer decline changes only the selected application to `declined_by_candidate`. A pending or active member accepting a different assignment keeps the current assignment until the explicit membership transfer operation is completed.
 

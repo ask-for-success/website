@@ -107,6 +107,8 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Lock form scope and questions after the first application.
 - [x] Add draft, published, closed, and archived recruitment opportunities.
 - [x] Allow an authenticated account to apply once per opportunity.
+- [x] Keep the one-application rule permanent after every final status.
+- [x] Require a new opportunity for a candidate to apply in a later campaign.
 - [x] Validate answers and store them as read-only application results.
 - [x] Require one PDF CV with a 10 MB limit and signature validation.
 - [x] Keep CVs in private storage behind applicant-or-HR API authorization.
@@ -191,12 +193,11 @@ Do not install SeaweedFS or change the local development storage during the curr
 
 ## Next engineering task
 
-Validate the candidate-confirmed recruitment offer contract with the frontend team in Swagger: HR sends the offer, the authenticated candidate accepts or declines it, and the frontend handles `requires_department_transfer` for existing members.
+Implement national ID number collection during post-acceptance onboarding after confirming its administrator access boundary. No identity-document upload belongs in this workflow.
 
 ## Next implementation
 
 1. Confirm recruitment, membership, news, gallery, and organization contracts with the frontend team through Swagger and Postman.
-2. Decide whether rejected candidates can reapply to the same opportunity or require a new campaign.
+2. Confirm national ID administrator scope, then add protected onboarding collection and audit behavior.
 3. Decide whether donation-intent records belong in V1 before adding donation forms.
-4. Add national ID onboarding only after its administrator scope and audit contract are approved.
-5. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.
+4. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.

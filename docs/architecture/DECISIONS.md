@@ -163,3 +163,9 @@ HR cannot directly accept an application. An HR-authorized content manager sends
 Only the authenticated applicant can respond. Acceptance changes the application to `accepted`, creates or reactivates membership when required, and atomically marks every other non-final application for the same applicant as `withdrawn`. Each automatic withdrawal has its own audit record. Declining changes only the offered application to `declined_by_candidate`, creates no membership, and leaves all other applications open.
 
 For a pending or active member accepting an offer for a different assignment, acceptance records the recruitment outcome but does not replace the current assignment. The API reports `requires_department_transfer`, and HR must use the explicit audited transfer operation.
+
+## D-031 — Recruitment reapplication uses a new opportunity
+
+An account has at most one application for a recruitment opportunity, permanently and regardless of whether that application is open, accepted, rejected, declined, or withdrawn. Final applications are retained as immutable recruitment and audit history; they are not deleted, reset, or reopened to permit reapplication.
+
+A later recruitment campaign is represented by a newly published opportunity. The person reuses the same account and can submit one new application to that new opportunity, including when it uses the same department, position, and reusable form.

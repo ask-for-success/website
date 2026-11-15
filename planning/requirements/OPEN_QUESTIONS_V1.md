@@ -10,10 +10,6 @@ Can users change their own email address? If yes, must the new address be verifi
 
 ## Recruitment and membership
 
-### Q-005 — Reapplication
-
-Can a rejected applicant apply to the same opportunity again? Under which campaign or time rule?
-
 ### Q-020 — Administrator scope for national ID
 
 Does national ID access belong to the global `account_administrator`, or will there be a future department-scoped administrator with access only to their department?

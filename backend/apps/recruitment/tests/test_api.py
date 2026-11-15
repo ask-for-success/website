@@ -290,15 +290,63 @@ class RecruitmentApiTests(APITestCase):
             RecruitmentApplication.objects.filter(applicant=self.candidate).exists()
         )
 
-    def test_candidate_cannot_apply_twice_to_same_opportunity(self):
+    def test_rejected_candidate_cannot_reapply_to_same_opportunity(self):
         first_response = self.submit_application()
+        application = RecruitmentApplication.objects.get(
+            pk=first_response.data["id"]
+        )
+        application.status = ApplicationStatus.REJECTED
+        application.save(update_fields=("status", "updated_at"))
+
         second_response = self.submit_application()
 
         self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(second_response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
+            second_response.data["opportunity"][0],
+            (
+                "You already applied to this opportunity. Apply to a new "
+                "opportunity for a later recruitment campaign."
+            ),
+        )
+        self.assertEqual(
             RecruitmentApplication.objects.filter(applicant=self.candidate).count(),
             1,
+        )
+
+    def test_rejected_candidate_can_apply_to_new_campaign_opportunity(self):
+        first_response = self.submit_application()
+        application = RecruitmentApplication.objects.get(
+            pk=first_response.data["id"]
+        )
+        application.status = ApplicationStatus.REJECTED
+        application.save(update_fields=("status", "updated_at"))
+        later_opportunity = RecruitmentOpportunity.objects.create(
+            form=self.form,
+            title="Backend developer recruitment 2027",
+            slug="backend-developer-recruitment-2027",
+            summary="Join the next engineering recruitment campaign.",
+            description_markdown="## Role\n\nA new campaign for the same role.",
+            status=OpportunityStatus.PUBLISHED,
+            created_by=self.hr_manager,
+        )
+        self.client.force_authenticate(self.candidate)
+
+        response = self.client.post(
+            (
+                f"/api/v1/recruitment/opportunities/"
+                f"{later_opportunity.id}/applications/"
+            ),
+            self.application_payload(),
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            RecruitmentApplication.objects.filter(
+                applicant=self.candidate
+            ).count(),
+            2,
         )
 
     def test_archived_form_stops_new_applications(self):

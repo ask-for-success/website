@@ -186,6 +186,18 @@ def create_recruitment_application(
     try:
         with transaction.atomic():
             locked_applicant = User.objects.select_for_update().get(pk=applicant.pk)
+            if RecruitmentApplication.objects.filter(
+                opportunity=opportunity,
+                applicant=locked_applicant,
+            ).exists():
+                raise ValidationError(
+                    {
+                        "opportunity": (
+                            "You already applied to this opportunity. Apply to "
+                            "a new opportunity for a later recruitment campaign."
+                        )
+                    }
+                )
             application = RecruitmentApplication.objects.create(
                 opportunity=opportunity,
                 applicant=locked_applicant,
@@ -213,7 +225,12 @@ def create_recruitment_application(
         if saved_cv and saved_cv.file.name:
             saved_cv.file.storage.delete(saved_cv.file.name)
         raise ValidationError(
-            {"opportunity": "You already applied to this opportunity."}
+            {
+                "opportunity": (
+                    "You already applied to this opportunity. Apply to a new "
+                    "opportunity for a later recruitment campaign."
+                )
+            }
         ) from error
     except Exception:
         if saved_cv and saved_cv.file.name:

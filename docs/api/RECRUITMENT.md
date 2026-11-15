@@ -75,7 +75,9 @@ Example `answers` value:
 ]
 ```
 
-Single-choice values are option UUIDs. Multiple-choice values are lists of option UUIDs. Answer records become read-only after submission. A user can apply only once to the same opportunity.
+Single-choice values are option UUIDs. Multiple-choice values are lists of option UUIDs. Answer records become read-only after submission.
+
+An account can apply only once to the same opportunity. This rule continues after rejection, candidate decline, acceptance, or automatic withdrawal; a final application is never deleted or reopened for reapplication. HR must publish a new opportunity for a later recruitment campaign, and the candidate can apply to that new opportunity with the same account.
 
 ## Status and membership behavior
 

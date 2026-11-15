@@ -552,7 +552,7 @@ Table recruitment_applications {
   submitted_at timestamptz [not null]
   updated_at timestamptz [not null]
 
-  Note: "Applicant is unique within an opportunity."
+  Note: "Applicant is permanently unique within an opportunity regardless of status. A later campaign requires a new opportunity."
 }
 
 Table recruitment_answers {
