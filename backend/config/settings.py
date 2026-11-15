@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "apps.content",
     "apps.organization",
     "apps.recruitment",
+    "apps.audit",
 ]
 
 MIDDLEWARE = [
@@ -181,6 +182,8 @@ SPECTACULAR_SETTINGS = {
         "RecruitmentDecisionEmailStatus": (
             "apps.recruitment.models.DecisionEmailStatus"
         ),
+        "AuditDomain": "apps.audit.models.AuditDomain",
+        "AuditAction": "apps.audit.models.AuditAction",
     },
 }
 

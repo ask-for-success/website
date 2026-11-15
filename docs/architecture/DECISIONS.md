@@ -131,3 +131,11 @@ Shared site contact and footer data has one source of truth. Impact statistics a
 Gallery highlight videos are hosted exclusively on YouTube. The CMS stores a validated canonical YouTube URL, and the API derives the video ID, privacy-enhanced embed URL, and default YouTube thumbnail URL. No video binary is uploaded to or stored by the application.
 
 The Get Involved page stores donation instructions and CTA content only. No donation-intent record or submission endpoint is created until the donation product question is approved.
+
+## D-027 — Immutable operational audit trail
+
+Sensitive recruitment and membership operations create audit records inside the same database transaction as the business change. A failure to create the audit record therefore rolls back the protected operation instead of leaving unaudited state.
+
+Records contain an approved action, actor, timestamp, related application or membership, allowlisted previous and new state, and an optional reason. They never contain passwords, tokens, CV contents, national ID values, or complete request payloads. Audit records cannot be created, updated, or deleted through the API and are read-only in Django administration.
+
+The global audit log is visible only to users with `accounts.view_audit_log`, which is included in the `account_administrator` role. HR-authorized content managers create audit history through their business operations but do not automatically receive global audit-log access.

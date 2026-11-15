@@ -10,6 +10,8 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.accounts.permissions import is_hr_manager
+from apps.audit.models import AuditAction, AuditDomain
+from apps.audit.services import record_audit_event
 from apps.memberships.models import Membership, MembershipStatus
 from apps.memberships.operations import (
     create_initial_membership,
@@ -238,6 +240,9 @@ def change_application_status(
     if new_status == locked_application.status:
         return locked_application
 
+    previous_status = locked_application.status
+    affected_membership = None
+
     if new_status in FINAL_APPLICATION_STATUSES:
         locked_applicant = User.objects.select_for_update().get(
             pk=locked_application.applicant_id
@@ -250,18 +255,20 @@ def change_application_status(
             )
             form = locked_application.opportunity.form
             if membership is None:
-                create_initial_membership(
+                affected_membership = create_initial_membership(
                     user=locked_applicant,
                     department=form.department,
                     position=form.position,
                     assigned_by=changed_by,
+                    source_application=locked_application,
                 )
             elif membership.status == MembershipStatus.INACTIVE:
-                reactivate_membership_after_acceptance(
+                affected_membership = reactivate_membership_after_acceptance(
                     membership=membership,
                     department=form.department,
                     position=form.position,
                     assigned_by=changed_by,
+                    source_application=locked_application,
                 )
             else:
                 raise ValidationError(
@@ -288,6 +295,15 @@ def change_application_status(
             "decision_email_error",
             "updated_at",
         )
+    )
+    record_audit_event(
+        domain=AuditDomain.RECRUITMENT,
+        action=AuditAction.APPLICATION_STATUS_CHANGED,
+        actor=changed_by,
+        application=locked_application,
+        membership=affected_membership,
+        previous_state={"application_status": previous_status},
+        new_state={"application_status": locked_application.status},
     )
     return locked_application
 

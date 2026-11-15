@@ -569,3 +569,18 @@ Table application_cvs {
   sha256 varchar(64) [not null]
   uploaded_at timestamptz [not null]
 }
+
+Table audit_records {
+  id uuid [pk, not null]
+  domain varchar(24) [not null]
+  action varchar(64) [not null]
+  actor_id uuid [not null, ref: > users.id]
+  application_id uuid [ref: > recruitment_applications.id]
+  membership_id uuid [ref: > memberships.id]
+  previous_state jsonb [not null, default: `{}`]
+  new_state jsonb [not null, default: `{}`]
+  reason text [not null, default: ""]
+  created_at timestamptz [not null]
+
+  Note: "Immutable audit history. At least one business target is required. State keys are allowlisted and secrets are prohibited."
+}

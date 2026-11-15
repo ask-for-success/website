@@ -8,7 +8,7 @@ Authorization uses Django groups as global role bundles and Django permissions a
 
 | Global role | Capabilities |
 |---|---|
-| `account_administrator` | Manage accounts, access assignments, and the future audit log. |
+| `account_administrator` | Manage accounts and access assignments, and read the global audit log. |
 | `content_manager` | Manage CMS content after the CMS domain is implemented. |
 
 HR is not a global role or a dedicated account type. `accounts.manage_hr` is an additional permission assigned directly to selected content managers. The API rejects this permission unless the user also has the `content_manager` role.
@@ -48,4 +48,4 @@ For manual review, import [AFS_Access_Control.postman_collection.json](./AFS_Acc
 
 ## Review boundary
 
-Global authorization is implemented and reused by the membership, CMS, and event domains. Recruitment, national ID access, and the audit log remain separate future work.
+Global authorization is implemented and reused by the membership, CMS, event, recruitment, and audit domains. The audit log is read-only and requires `accounts.view_audit_log`. National ID access remains separate future work.

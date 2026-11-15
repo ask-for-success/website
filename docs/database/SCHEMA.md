@@ -81,6 +81,14 @@ The `recruitment_applications` table connects one authenticated applicant to one
 
 The `application_cvs` table stores one CV metadata record per application: private file path, original name, MIME type, size, SHA-256 hash, and upload time. PDF bytes remain outside PostgreSQL and are not exposed through public media URLs.
 
+## Audit records
+
+The `audit_records` table stores immutable recruitment and membership history. Each record contains a domain, approved action, actor, related application or membership, allowlisted previous and new state snapshots, optional reason, and creation time.
+
+At least one business target is required. Recruitment records require an application, and membership records require a membership. Acceptance can reference both so the decision and resulting membership change remain correlated.
+
+Audit state snapshots accept only status, department, position, and assignment identifiers. Passwords, tokens, CV contents, national ID values, and arbitrary request payloads are structurally excluded. Business targets and actors use protected foreign keys so their audit history cannot be removed accidentally.
+
 ## Token infrastructure
 
 The JWT library creates active and revoked refresh-token tables through its own migrations. These are authentication infrastructure, not business models.

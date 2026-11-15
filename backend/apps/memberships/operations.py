@@ -10,6 +10,8 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.accounts.permissions import is_hr_manager
+from apps.audit.models import AuditAction, AuditDomain
+from apps.audit.services import record_audit_event
 from apps.organization.models import Department, Position
 
 from .models import (
@@ -68,6 +70,7 @@ def create_initial_membership(
     department: Department,
     position: Position,
     assigned_by,
+    source_application=None,
 ) -> Membership:
     ensure_hr_manager(assigned_by)
     ensure_position_department(position, department)
@@ -88,6 +91,20 @@ def create_initial_membership(
     )
     assignment.full_clean()
     assignment.save()
+    record_audit_event(
+        domain=AuditDomain.MEMBERSHIP,
+        action=AuditAction.MEMBERSHIP_CREATED,
+        actor=assigned_by,
+        application=source_application,
+        membership=membership,
+        new_state={
+            "membership_status": membership.status,
+            "onboarding_status": membership.onboarding.status,
+            "department_id": str(department.id),
+            "position_id": str(position.id),
+            "assignment_id": str(assignment.id),
+        },
+    )
     return membership
 
 
@@ -152,6 +169,12 @@ def transfer_member(
         )
 
     now = timezone.now()
+    previous_state = {
+        "membership_status": locked_membership.status,
+        "department_id": str(current_assignment.department_id),
+        "position_id": str(current_assignment.position_id),
+        "assignment_id": str(current_assignment.id),
+    }
     current_assignment.ends_at = now
     current_assignment.end_reason = reason
     current_assignment.save(
@@ -167,6 +190,20 @@ def transfer_member(
     )
     new_assignment.full_clean()
     new_assignment.save()
+    record_audit_event(
+        domain=AuditDomain.MEMBERSHIP,
+        action=AuditAction.MEMBERSHIP_TRANSFERRED,
+        actor=assigned_by,
+        membership=locked_membership,
+        previous_state=previous_state,
+        new_state={
+            "membership_status": locked_membership.status,
+            "department_id": str(new_department.id),
+            "position_id": str(new_position.id),
+            "assignment_id": str(new_assignment.id),
+        },
+        reason=reason,
+    )
     return new_assignment
 
 
@@ -199,6 +236,10 @@ def update_onboarding_status(
         membership=locked_membership
     )
     now = timezone.now()
+    previous_state = {
+        "membership_status": locked_membership.status,
+        "onboarding_status": onboarding.status,
+    }
 
     if new_status == OnboardingStatus.IN_PROGRESS:
         if onboarding.status == OnboardingStatus.COMPLETED:
@@ -210,6 +251,17 @@ def update_onboarding_status(
             onboarding.started_at = now
             onboarding.save(
                 update_fields=("status", "started_at", "updated_at")
+            )
+            record_audit_event(
+                domain=AuditDomain.MEMBERSHIP,
+                action=AuditAction.ONBOARDING_STATUS_CHANGED,
+                actor=updated_by,
+                membership=locked_membership,
+                previous_state=previous_state,
+                new_state={
+                    "membership_status": locked_membership.status,
+                    "onboarding_status": onboarding.status,
+                },
             )
         return onboarding
 
@@ -226,6 +278,17 @@ def update_onboarding_status(
             )
             locked_membership.status = MembershipStatus.ACTIVE
             locked_membership.save(update_fields=("status", "updated_at"))
+            record_audit_event(
+                domain=AuditDomain.MEMBERSHIP,
+                action=AuditAction.ONBOARDING_STATUS_CHANGED,
+                actor=updated_by,
+                membership=locked_membership,
+                previous_state=previous_state,
+                new_state={
+                    "membership_status": locked_membership.status,
+                    "onboarding_status": onboarding.status,
+                },
+            )
         return onboarding
 
     raise ValidationError(
@@ -264,6 +327,12 @@ def record_member_departure(
         ) from error
 
     now = timezone.now()
+    previous_state = {
+        "membership_status": locked_membership.status,
+        "department_id": str(current_assignment.department_id),
+        "position_id": str(current_assignment.position_id),
+        "assignment_id": str(current_assignment.id),
+    }
     current_assignment.ends_at = now
     current_assignment.end_reason = reason
     current_assignment.save(
@@ -271,6 +340,15 @@ def record_member_departure(
     )
     locked_membership.status = MembershipStatus.INACTIVE
     locked_membership.save(update_fields=("status", "updated_at"))
+    record_audit_event(
+        domain=AuditDomain.MEMBERSHIP,
+        action=AuditAction.DEPARTURE_RECORDED,
+        actor=recorded_by,
+        membership=locked_membership,
+        previous_state=previous_state,
+        new_state={"membership_status": locked_membership.status},
+        reason=reason,
+    )
     return locked_membership
 
 
@@ -281,6 +359,7 @@ def reactivate_membership_after_acceptance(
     department: Department,
     position: Position,
     assigned_by,
+    source_application=None,
 ) -> Membership:
     ensure_hr_manager(assigned_by)
     ensure_position_department(position, department)
@@ -317,8 +396,24 @@ def reactivate_membership_after_acceptance(
     )
     assignment.full_clean()
     assignment.save()
+    previous_state = {"membership_status": locked_membership.status}
     locked_membership.status = MembershipStatus.ACTIVE
     locked_membership.save(update_fields=("status", "updated_at"))
+    record_audit_event(
+        domain=AuditDomain.MEMBERSHIP,
+        action=AuditAction.MEMBERSHIP_REACTIVATED,
+        actor=assigned_by,
+        application=source_application,
+        membership=locked_membership,
+        previous_state=previous_state,
+        new_state={
+            "membership_status": locked_membership.status,
+            "onboarding_status": locked_membership.onboarding.status,
+            "department_id": str(department.id),
+            "position_id": str(position.id),
+            "assignment_id": str(assignment.id),
+        },
+    )
     return locked_membership
 
 
@@ -438,6 +533,13 @@ def create_membership_invitation(
     )
     invitation.full_clean()
     invitation.save()
+    record_audit_event(
+        domain=AuditDomain.MEMBERSHIP,
+        action=AuditAction.INVITATION_CREATED,
+        actor=created_by,
+        membership=membership,
+        new_state={"invitation_status": invitation.status},
+    )
     return MembershipInvitationResult(
         invitation=invitation,
         setup_token=setup_token,
@@ -513,6 +615,16 @@ def accept_membership_invitation(
             invitation.used_at = now
             invitation.save(
                 update_fields=("status", "used_at", "updated_at")
+            )
+            record_audit_event(
+                domain=AuditDomain.MEMBERSHIP,
+                action=AuditAction.INVITATION_ACCEPTED,
+                actor=user,
+                membership=invitation.membership,
+                previous_state={
+                    "invitation_status": MembershipInvitationStatus.ACTIVE
+                },
+                new_state={"invitation_status": invitation.status},
             )
 
     if deferred_error:

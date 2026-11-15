@@ -6,7 +6,7 @@ This file records delivery status without duplicating requirements, database mod
 
 ## Current position
 
-- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, event foundation, public event registration, QR tickets, scanner assignments, check-in, and the structured public-page and media CMS foundation.
+- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, event foundation, public event registration, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, and immutable recruitment and membership audit records.
 - **Under review:** global roles, permissions, authentication behavior, and frontend contracts.
 - **In progress:** organization, membership, invitations, onboarding, recruitment frontend validation, and CMS frontend validation.
 - **Deferred to the final infrastructure phase:** self-hosted open-source file storage and Amazon SES production email configuration.
@@ -22,7 +22,7 @@ This file records delivery status without duplicating requirements, database mod
 | 5. Integrated recruitment | In progress | Forms, applications, interviews, and decisions are validated. |
 | 6. Content management | In progress | News, editable pages, and media are validated. |
 | 7. Events and check-in | In progress | Registration, tickets, delivery, and check-in are production-ready. |
-| 8. Administration and audit | Not started | Administration and traceability are validated. |
+| 8. Administration and audit | In progress | Administration and traceability are validated. |
 | 9. Production services | Not started | Operational requirements are complete. |
 
 ## Accounts and authentication
@@ -166,16 +166,27 @@ When the final infrastructure phase begins, the self-hosted storage implementati
 
 Do not install SeaweedFS or change the local development storage during the current business-logic phase.
 
+## Administration and audit
+
+- [x] Add immutable audit records with actor, action, timestamp, target, previous state, new state, and reason.
+- [x] Record recruitment application status changes.
+- [x] Record membership creation, reactivation, onboarding, transfer, departure, and invitation actions.
+- [x] Correlate acceptance decisions with the resulting membership operation.
+- [x] Reject secrets, CV contents, national ID values, and arbitrary request fields from state snapshots.
+- [x] Restrict the read-only audit API to `accounts.view_audit_log`.
+- [x] Add filtering, pagination, Swagger, database documentation, and automated tests.
+- [ ] Confirm the audit-list contract with the administration frontend.
+- [ ] Decide whether CMS publication and archive actions belong in the V1 audit trail.
+
 ## Next engineering task
 
-The recommended next backend implementation is an audit trail for sensitive recruitment and membership actions. It should record the action, previous and new state, actor, timestamp, and related application or membership without storing CV contents, tokens, passwords, or national ID values.
+The recommended next backend implementation is the member-area summary API. It should return the authenticated user's membership, current department and position, onboarding state, assignment history summary, and active event-scanner assignments without exposing HR-only records.
 
 ## Next implementation
 
 1. Confirm recruitment, membership, news, gallery, and organization contracts with the frontend team through Swagger and Postman.
 2. Decide how acceptance affects the candidate's other pending applications. The current implementation leaves them unchanged.
-3. Add audit records for sensitive recruitment and membership actions.
-4. Build the member-area backend summaries and access rules.
-5. Decide whether donation-intent records belong in V1 before adding donation forms.
-6. Add national ID onboarding only after its administrator scope and audit contract are approved.
-7. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.
+3. Build the member-area backend summaries and access rules.
+4. Decide whether donation-intent records belong in V1 before adding donation forms.
+5. Add national ID onboarding only after its administrator scope and audit contract are approved.
+6. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.
