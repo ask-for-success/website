@@ -268,6 +268,11 @@ def send_registration_confirmation_email(
     registration = result.registration
     ticket = result.ticket
     event = result.registration.event
+    notification = EventParticipantNotification.objects.create(
+        event=event,
+        registration=registration,
+        notification_type=EventNotificationType.CONFIRMATION,
+    )
     cancellation_link = build_cancellation_link(registration)
     cancellation_deadline = _format_event_time(
         registration.cancellation_deadline
@@ -297,8 +302,9 @@ def send_registration_confirmation_email(
         if sent_count != 1:
             raise RuntimeError("The email service did not confirm delivery.")
     except Exception as error:
+        error_message = str(error)[:2000]
         registration.confirmation_email_status = EmailDeliveryStatus.FAILED
-        registration.confirmation_email_error = str(error)[:2000]
+        registration.confirmation_email_error = error_message
         registration.save(
             update_fields=(
                 "confirmation_email_status",
@@ -308,7 +314,7 @@ def send_registration_confirmation_email(
         )
         if ticket is not None:
             ticket.delivery_status = QrDeliveryStatus.FAILED
-            ticket.delivery_error = str(error)[:2000]
+            ticket.delivery_error = error_message
             ticket.save(
                 update_fields=(
                     "delivery_status",
@@ -316,6 +322,15 @@ def send_registration_confirmation_email(
                     "updated_at",
                 )
             )
+        notification.delivery_status = EmailDeliveryStatus.FAILED
+        notification.delivery_error = error_message
+        notification.save(
+            update_fields=(
+                "delivery_status",
+                "delivery_error",
+                "updated_at",
+            )
+        )
         return
 
     sent_at = timezone.now()
@@ -342,6 +357,17 @@ def send_registration_confirmation_email(
                 "updated_at",
             )
         )
+    notification.delivery_status = EmailDeliveryStatus.SENT
+    notification.sent_at = sent_at
+    notification.delivery_error = ""
+    notification.save(
+        update_fields=(
+            "delivery_status",
+            "sent_at",
+            "delivery_error",
+            "updated_at",
+        )
+    )
 
 
 @transaction.atomic

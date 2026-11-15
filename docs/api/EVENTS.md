@@ -51,7 +51,21 @@ Every successful registration is confirmed immediately. There is no pending appr
 
 A content manager can add a participant using the same payload as public registration. The same required-answer, duplicate-email, registration-window, and capacity rules apply. A manual registration cannot exceed capacity; the manager must increase event capacity first. The participant receives the normal confirmation email and cancellation link.
 
-Content managers can list registrations with `GET /api/v1/events/{event_id}/registrations/`. Each row includes its `public` or `manual` source, submitted answers, registration status, confirmation-email state, cancellation state, QR delivery state, and check-in state.
+Content managers can list registrations with `GET /api/v1/events/{event_id}/registrations/`. Each row includes its `public` or `manual` source, submitted answers, registration status, confirmation-email state, cancellation state, QR delivery state, and check-in state. The response uses page-number pagination with a default page size of 25 and a maximum of 200.
+
+Dashboard query parameters:
+
+- `search`: case-insensitive email search.
+- `status`: `registered` or `cancelled`.
+- `source`: `public` or `manual`.
+- `qr_delivery_status`: `pending`, `sent`, `failed`, or `not_required`.
+- `is_checked_in`: `true` or `false`.
+- `ordering`: `registered_at`, `email`, `status`, `source`, `confirmation_email_status`, `qr_delivery_status`, or `checked_in_at`; prefix with `-` for descending order.
+- `page` and `page_size`: select the result page.
+
+The same search, filters, and ordering can be exported without pagination from `GET /api/v1/events/{event_id}/registrations/export/`. The UTF-8 CSV includes registration state, delivery and check-in state, and one column for every event-form question. Choice answers are exported as their readable option labels rather than database UUIDs.
+
+`GET /api/v1/events/{event_id}/statistics/` returns capacity, registered, cancelled, checked-in, and remaining-seat counts for the administration dashboard.
 
 ## Participant cancellation
 
@@ -107,7 +121,9 @@ POST /api/v1/events/{event_id}/cancel/
 
 Permanent cancellation changes the event to `cancelled`, cancels every active registration, releases all places, and invalidates its registration links and QR check-in. Notification defaults to `true` and tells participants that the event will no longer occur. A content manager may deliberately set `notify_participants` to `false`; the API then records no notification attempts.
 
-Both lifecycle endpoints return `notification_count`, `sent_count`, and `failed_count`. Individual notification delivery records are retained for operations and troubleshooting.
+Both lifecycle endpoints return `notification_count`, `sent_count`, and `failed_count`. Individual delivery attempts for confirmation, rescheduling, and cancellation are retained for operations and troubleshooting.
+
+Content managers can inspect this history with `GET /api/v1/events/{event_id}/notifications/`. The paginated endpoint supports email search, `notification_type`, `delivery_status`, ordering, and page-size parameters.
 
 ## Event scanners
 

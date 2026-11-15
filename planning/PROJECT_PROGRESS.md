@@ -108,6 +108,11 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Add safe rescheduling with default participant notification and the same valid QR code.
 - [x] Add permanent event cancellation with default participant notification and registration invalidation.
 - [x] Retain per-participant lifecycle notification delivery state and errors.
+- [x] Add registration email search and status, source, QR-delivery, and check-in filters.
+- [x] Add stable registration ordering and page-number pagination.
+- [x] Add capacity, registered, cancelled, checked-in, and remaining-seat statistics.
+- [x] Add filtered CSV participant export with readable dynamic-form answers.
+- [x] Add paginated confirmation, reschedule, and cancellation notification history.
 - [x] Translate event code, API fields, routes, tables, tests, Swagger, and documentation into English.
 - [x] Apply and verify the English event database schema.
 - [ ] Deferred: configure and validate Amazon SES in the final infrastructure phase.

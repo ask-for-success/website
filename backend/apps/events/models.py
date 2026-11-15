@@ -63,6 +63,7 @@ class EmailDeliveryStatus(models.TextChoices):
 
 
 class EventNotificationType(models.TextChoices):
+    CONFIRMATION = "confirmation", "Confirmation"
     RESCHEDULED = "rescheduled", "Rescheduled"
     CANCELLED = "cancelled", "Cancelled"
 

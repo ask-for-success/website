@@ -53,7 +53,7 @@ The `event_registrations` table stores public and manager-created registrations 
 
 The `event_tickets` table exists only for registrations requiring QR check-in. It stores the signed QR token hash, delivery status, sent timestamp, and delivery error. The raw token is never stored, but its deterministic signature allows the same value to be reproduced for reschedule notifications.
 
-The `event_participant_notifications` table records reschedule and permanent-cancellation email attempts per registration, including delivery state, sent time, and error. A failed notification never reverses the event lifecycle operation.
+The `event_participant_notifications` table records confirmation, reschedule, and permanent-cancellation email attempts per registration, including delivery state, sent time, and error. A failed notification never reverses the registration or event lifecycle operation.
 
 The `event_scanners` table assigns an active membership to one event. `event_check_ins` records the scanner and time. Its one-to-one ticket relationship guarantees one effective check-in per ticket.
 

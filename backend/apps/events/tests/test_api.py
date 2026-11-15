@@ -1,4 +1,6 @@
+import csv
 from datetime import timedelta
+from io import StringIO
 
 from django.contrib.auth.models import Group
 from django.core import mail
@@ -13,6 +15,7 @@ from apps.memberships.models import Membership, MembershipStatus
 from ..models import (
     EmailDeliveryStatus,
     Event,
+    EventCheckIn,
     EventNotificationType,
     EventParticipantNotification,
     EventQuestion,
@@ -202,6 +205,12 @@ class EventApiTests(EventTestDataMixin, APITestCase):
         self.assertEqual(mail.outbox[0].to, ["visitor@example.com"])
         self.assertEqual(mail.outbox[0].attachments[0][2], "image/png")
         self.assertIn("/events/registrations/cancel?token=", mail.outbox[0].body)
+        confirmation = EventParticipantNotification.objects.get()
+        self.assertEqual(
+            confirmation.notification_type,
+            EventNotificationType.CONFIRMATION,
+        )
+        self.assertEqual(confirmation.delivery_status, EmailDeliveryStatus.SENT)
 
     def test_same_email_cannot_register_twice(self):
         creation = self.create_event_through_api()
@@ -415,7 +424,9 @@ class EventApiTests(EventTestDataMixin, APITestCase):
         self.assertIn("has been rescheduled", mail.outbox[1].body)
         self.assertEqual(EventTicket.objects.get().qr_code_hash, ticket_hash)
         self.assertEqual(
-            EventParticipantNotification.objects.get().notification_type,
+            EventParticipantNotification.objects.get(
+                notification_type=EventNotificationType.RESCHEDULED
+            ).notification_type,
             EventNotificationType.RESCHEDULED,
         )
 
@@ -470,7 +481,9 @@ class EventApiTests(EventTestDataMixin, APITestCase):
         )
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("will no longer take place", mail.outbox[0].body)
-        notification = EventParticipantNotification.objects.get()
+        notification = EventParticipantNotification.objects.get(
+            notification_type=EventNotificationType.CANCELLED
+        )
         self.assertEqual(
             notification.notification_type,
             EventNotificationType.CANCELLED,
@@ -501,7 +514,216 @@ class EventApiTests(EventTestDataMixin, APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["notification_count"], 0)
         self.assertEqual(len(mail.outbox), 0)
-        self.assertFalse(EventParticipantNotification.objects.exists())
+        self.assertFalse(
+            EventParticipantNotification.objects.filter(
+                notification_type=EventNotificationType.CANCELLED
+            ).exists()
+        )
+        self.assertTrue(
+            EventParticipantNotification.objects.filter(
+                notification_type=EventNotificationType.CONFIRMATION
+            ).exists()
+        )
+
+    def test_registration_dashboard_search_filters_pagination_and_ordering(self):
+        creation = self.create_event_through_api(capacity=10)
+        event = Event.objects.get(pk=creation.data["id"])
+        alpha = create_event_registration(
+            event=event,
+            email="alpha@example.com",
+            answers=self.registration_payload(event)["answers"],
+        ).registration
+        bravo_result = create_event_registration(
+            event=event,
+            email="bravo@example.com",
+            answers=self.registration_payload(event)["answers"],
+            source=EventRegistrationSource.MANUAL,
+        )
+        bravo_result.ticket.delivery_status = QrDeliveryStatus.SENT
+        bravo_result.ticket.save(update_fields=("delivery_status", "updated_at"))
+        EventCheckIn.objects.create(
+            ticket=bravo_result.ticket,
+            checked_in_by=self.member_user,
+        )
+        cancelled = create_event_registration(
+            event=event,
+            email="cancelled@example.com",
+            answers=self.registration_payload(event)["answers"],
+            source=EventRegistrationSource.MANUAL,
+        ).registration
+        cancelled.status = EventRegistrationStatus.CANCELLED
+        cancelled.cancelled_at = timezone.now()
+        cancelled.save(update_fields=("status", "cancelled_at", "updated_at"))
+
+        filtered = self.client.get(
+            f"/api/v1/events/{event.id}/registrations/",
+            {
+                "search": "BRAVO",
+                "status": EventRegistrationStatus.REGISTERED,
+                "source": EventRegistrationSource.MANUAL,
+                "qr_delivery_status": QrDeliveryStatus.SENT,
+                "is_checked_in": "true",
+                "ordering": "email",
+            },
+        )
+        paginated = self.client.get(
+            f"/api/v1/events/{event.id}/registrations/",
+            {"page_size": 2, "ordering": "email"},
+        )
+
+        self.assertEqual(event.registrations.count(), 3)
+        self.assertEqual(filtered.status_code, status.HTTP_200_OK)
+        self.assertEqual(filtered.data["count"], 1)
+        self.assertEqual(
+            filtered.data["results"][0]["email"],
+            "bravo@example.com",
+        )
+        self.assertEqual(paginated.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            paginated.data["count"],
+            3,
+            paginated.data,
+        )
+        self.assertEqual(len(paginated.data["results"]), 2)
+        self.assertEqual(
+            [item["email"] for item in paginated.data["results"]],
+            [alpha.email, bravo_result.registration.email],
+        )
+        self.assertIsNotNone(paginated.data["next"])
+
+    def test_event_statistics_include_capacity_registration_and_check_in_counts(self):
+        creation = self.create_event_through_api(capacity=5)
+        event = Event.objects.get(pk=creation.data["id"])
+        checked_in_result = create_event_registration(
+            event=event,
+            email="checked-in@example.com",
+            answers=self.registration_payload(event)["answers"],
+        )
+        EventCheckIn.objects.create(
+            ticket=checked_in_result.ticket,
+            checked_in_by=self.member_user,
+        )
+        cancelled = create_event_registration(
+            event=event,
+            email="cancelled@example.com",
+            answers=self.registration_payload(event)["answers"],
+        ).registration
+        cancelled.status = EventRegistrationStatus.CANCELLED
+        cancelled.cancelled_at = timezone.now()
+        cancelled.save(update_fields=("status", "cancelled_at", "updated_at"))
+
+        response = self.client.get(
+            f"/api/v1/events/{event.id}/statistics/"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["capacity"], 5)
+        self.assertEqual(response.data["registered_count"], 1)
+        self.assertEqual(response.data["cancelled_count"], 1)
+        self.assertEqual(response.data["checked_in_count"], 1)
+        self.assertEqual(response.data["remaining_seats"], 4)
+
+    def test_content_manager_exports_participants_and_answers_as_csv(self):
+        creation = self.create_event_through_api()
+        event = Event.objects.get(pk=creation.data["id"])
+        create_event_registration(
+            event=event,
+            email="export@example.com",
+            answers=self.registration_payload(event)["answers"],
+        )
+
+        response = self.client.get(
+            f"/api/v1/events/{event.id}/registrations/export/"
+        )
+        rows = list(
+            csv.reader(StringIO(response.content.decode("utf-8-sig")))
+        )
+        record = dict(zip(rows[0], rows[1]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response["Content-Type"].startswith("text/csv"))
+        self.assertIn("attachment;", response["Content-Disposition"])
+        self.assertEqual(record["email"], "export@example.com")
+        self.assertEqual(record["answer:1:Your name"], "Visitor")
+        self.assertEqual(record["answer:2:Your background"], "Student")
+        self.assertEqual(
+            record["answer:4:Your preferred subjects"],
+            "Entrepreneurship | Technology",
+        )
+
+    def test_notification_history_includes_confirmation_reschedule_and_cancellation(self):
+        creation = self.create_event_through_api()
+        event = Event.objects.get(pk=creation.data["id"])
+        self.client.force_authenticate(user=None)
+        registration = self.client.post(
+            f"/api/v1/events/{event.id}/registrations/",
+            self.registration_payload(event),
+            format="json",
+        )
+        self.client.force_authenticate(self.content_manager)
+        new_start = event.starts_at + timedelta(days=3)
+        reschedule = self.client.post(
+            f"/api/v1/events/{event.id}/reschedule/",
+            {
+                "starts_at": new_start.isoformat(),
+                "ends_at": (new_start + timedelta(hours=3)).isoformat(),
+            },
+            format="json",
+        )
+        cancellation = self.client.post(
+            f"/api/v1/events/{event.id}/cancel/",
+            {},
+            format="json",
+        )
+
+        history = self.client.get(
+            f"/api/v1/events/{event.id}/notifications/",
+            {"ordering": "created_at", "page_size": 10},
+        )
+        confirmations = self.client.get(
+            f"/api/v1/events/{event.id}/notifications/",
+            {"notification_type": EventNotificationType.CONFIRMATION},
+        )
+
+        self.assertEqual(registration.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(reschedule.status_code, status.HTTP_200_OK)
+        self.assertEqual(cancellation.status_code, status.HTTP_200_OK)
+        self.assertEqual(history.status_code, status.HTTP_200_OK)
+        self.assertEqual(history.data["count"], 3)
+        self.assertEqual(
+            {item["notification_type"] for item in history.data["results"]},
+            {
+                EventNotificationType.CONFIRMATION,
+                EventNotificationType.RESCHEDULED,
+                EventNotificationType.CANCELLED,
+            },
+        )
+        self.assertEqual(confirmations.data["count"], 1)
+        self.assertEqual(
+            confirmations.data["results"][0]["email"],
+            "visitor@example.com",
+        )
+
+    def test_event_administration_reporting_requires_content_manager(self):
+        creation = self.create_event_through_api()
+        event_id = creation.data["id"]
+        self.client.force_authenticate(self.ordinary_user)
+
+        responses = [
+            self.client.get(f"/api/v1/events/{event_id}/registrations/"),
+            self.client.get(f"/api/v1/events/{event_id}/statistics/"),
+            self.client.get(
+                f"/api/v1/events/{event_id}/registrations/export/"
+            ),
+            self.client.get(f"/api/v1/events/{event_id}/notifications/"),
+        ]
+
+        self.assertTrue(
+            all(
+                response.status_code == status.HTTP_403_FORBIDDEN
+                for response in responses
+            )
+        )
 
     def test_required_questions_are_validated(self):
         creation = self.create_event_through_api()
@@ -648,6 +870,18 @@ class EventApiTests(EventTestDataMixin, APITestCase):
         )
         self.assertIn(
             "/api/v1/events/registrations/cancel/",
+            response.data["paths"],
+        )
+        self.assertIn(
+            "/api/v1/events/{event_id}/registrations/export/",
+            response.data["paths"],
+        )
+        self.assertIn(
+            "/api/v1/events/{event_id}/statistics/",
+            response.data["paths"],
+        )
+        self.assertIn(
+            "/api/v1/events/{event_id}/notifications/",
             response.data["paths"],
         )
 

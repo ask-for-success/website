@@ -190,7 +190,7 @@ Table event_participant_notifications {
   id uuid [pk, not null]
   event_id uuid [not null, ref: > events.id]
   registration_id uuid [not null, ref: > event_registrations.id]
-  notification_type varchar(16) [not null, note: "Rescheduled or cancelled"]
+  notification_type varchar(16) [not null, note: "Confirmation, rescheduled, or cancelled"]
   delivery_status varchar(16) [not null, default: "pending"]
   sent_at timestamptz
   delivery_error text [not null, default: ""]

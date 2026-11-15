@@ -6,13 +6,16 @@ from rest_framework import serializers
 from apps.memberships.models import Membership
 
 from .models import (
+    EmailDeliveryStatus,
     Event,
     EventNotificationType,
+    EventParticipantNotification,
     EventQuestion,
     EventQuestionOption,
     EventQuestionType,
     EventRegistration,
     EventRegistrationSource,
+    EventRegistrationStatus,
     EventScanner,
     EventTicket,
     QrDeliveryStatus,
@@ -382,6 +385,127 @@ class EventRegistrationSerializer(serializers.ModelSerializer):
         if ticket and hasattr(ticket, "check_in"):
             return ticket.check_in.checked_in_at
         return None
+
+
+EVENT_REGISTRATION_ORDERING_VALUES = (
+    "registered_at",
+    "-registered_at",
+    "email",
+    "-email",
+    "status",
+    "-status",
+    "source",
+    "-source",
+    "confirmation_email_status",
+    "-confirmation_email_status",
+    "qr_delivery_status",
+    "-qr_delivery_status",
+    "checked_in_at",
+    "-checked_in_at",
+)
+
+
+class EventRegistrationFilterSerializer(serializers.Serializer):
+    search = serializers.CharField(required=False, allow_blank=True)
+    status = serializers.ChoiceField(
+        choices=EventRegistrationStatus.choices,
+        required=False,
+    )
+    source = serializers.ChoiceField(
+        choices=EventRegistrationSource.choices,
+        required=False,
+    )
+    qr_delivery_status = serializers.ChoiceField(
+        choices=(*QrDeliveryStatus.choices, ("not_required", "Not required")),
+        required=False,
+    )
+    is_checked_in = serializers.BooleanField(required=False)
+    ordering = serializers.CharField(required=False, default="-registered_at")
+
+    def validate_ordering(self, value):
+        if value not in EVENT_REGISTRATION_ORDERING_VALUES:
+            raise serializers.ValidationError(
+                "This registration ordering value is not supported."
+            )
+        return value
+
+
+class EventRegistrationPageSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.URLField(allow_null=True)
+    previous = serializers.URLField(allow_null=True)
+    results = EventRegistrationSerializer(many=True)
+
+
+class EventStatisticsSerializer(serializers.Serializer):
+    event_id = serializers.UUIDField()
+    capacity = serializers.IntegerField(allow_null=True)
+    registered_count = serializers.IntegerField()
+    cancelled_count = serializers.IntegerField()
+    checked_in_count = serializers.IntegerField()
+    remaining_seats = serializers.IntegerField(allow_null=True)
+
+
+EVENT_NOTIFICATION_ORDERING_VALUES = (
+    "created_at",
+    "-created_at",
+    "sent_at",
+    "-sent_at",
+    "email",
+    "-email",
+    "notification_type",
+    "-notification_type",
+    "delivery_status",
+    "-delivery_status",
+)
+
+
+class EventNotificationFilterSerializer(serializers.Serializer):
+    search = serializers.CharField(required=False, allow_blank=True)
+    notification_type = serializers.ChoiceField(
+        choices=EventNotificationType.choices,
+        required=False,
+    )
+    delivery_status = serializers.ChoiceField(
+        choices=EmailDeliveryStatus.choices,
+        required=False,
+    )
+    ordering = serializers.CharField(required=False, default="-created_at")
+
+    def validate_ordering(self, value):
+        if value not in EVENT_NOTIFICATION_ORDERING_VALUES:
+            raise serializers.ValidationError(
+                "This notification ordering value is not supported."
+            )
+        return value
+
+
+class EventParticipantNotificationSerializer(serializers.ModelSerializer):
+    registration_id = serializers.UUIDField(read_only=True)
+    email = serializers.EmailField(
+        source="registration.email",
+        read_only=True,
+    )
+
+    class Meta:
+        model = EventParticipantNotification
+        fields = (
+            "id",
+            "registration_id",
+            "email",
+            "notification_type",
+            "delivery_status",
+            "sent_at",
+            "delivery_error",
+            "created_at",
+        )
+
+
+class EventNotificationPageSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.URLField(allow_null=True)
+    previous = serializers.URLField(allow_null=True)
+    results = EventParticipantNotificationSerializer(many=True)
 
 
 class EventRegistrationCancellationSerializer(serializers.Serializer):

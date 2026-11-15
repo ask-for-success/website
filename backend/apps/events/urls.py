@@ -5,11 +5,14 @@ from .views import (
     EventCheckInView,
     EventDetailView,
     EventListCreateView,
+    EventNotificationHistoryView,
+    EventRegistrationExportView,
     EventRegistrationsView,
     EventRegistrationCancellationView,
     EventRescheduleView,
     EventScannerRemovalView,
     EventScannersView,
+    EventStatisticsView,
     ManualEventRegistrationView,
 )
 
@@ -28,6 +31,21 @@ urlpatterns = [
         "<uuid:event_id>/registrations/manual/",
         ManualEventRegistrationView.as_view(),
         name="manual_registration",
+    ),
+    path(
+        "<uuid:event_id>/registrations/export/",
+        EventRegistrationExportView.as_view(),
+        name="registration_export",
+    ),
+    path(
+        "<uuid:event_id>/statistics/",
+        EventStatisticsView.as_view(),
+        name="statistics",
+    ),
+    path(
+        "<uuid:event_id>/notifications/",
+        EventNotificationHistoryView.as_view(),
+        name="notification_history",
     ),
     path(
         "registrations/cancel/",
