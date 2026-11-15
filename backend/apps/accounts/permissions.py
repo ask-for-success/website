@@ -10,3 +10,32 @@ class CanManageAccessAssignments(BasePermission):
             and request.user.is_authenticated
             and request.user.has_perm("accounts.manage_access_assignments")
         )
+
+
+def is_content_manager(user) -> bool:
+    return bool(
+        user
+        and user.is_authenticated
+        and (user.is_superuser or user.has_perm("accounts.manage_content"))
+    )
+
+
+class IsContentManager(BasePermission):
+    message = "This operation is restricted to content managers."
+
+    def has_permission(self, request, view) -> bool:
+        return is_content_manager(request.user)
+
+
+def is_hr_manager(user) -> bool:
+    return bool(
+        is_content_manager(user)
+        and (user.is_superuser or user.has_perm("accounts.manage_hr"))
+    )
+
+
+class CanManageHr(BasePermission):
+    message = "This operation requires content-manager access and HR permission."
+
+    def has_permission(self, request, view) -> bool:
+        return is_hr_manager(request.user)

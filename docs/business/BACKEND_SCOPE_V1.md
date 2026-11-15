@@ -29,25 +29,27 @@ The global authorization foundation is defined in the [authorization guide](../a
 V1 must support:
 
 - reusable forms owned by departments;
+- one position and department per form;
 - ordered questions and validated choices;
 - form locking after the first application;
 - published recruitment opportunities;
-- transactional application submission followed by read-only answers;
+- authenticated, transactional application submission with one private PDF CV and read-only answers;
 - an independent lifecycle for each application;
 - simultaneous applications to multiple departments before acceptance;
 - HR notes that are never visible to applicants;
 - the actor and timestamp for every final decision;
-- acceptance managed by a content manager with `accounts.manage_hr` for people recruited outside the application forms.
+- recruitment processing by a content manager with `accounts.manage_hr`;
+- protected candidate detail, answer, and CV access for authorized HR users.
 
-The proposed lifecycle is `submitted`, `under_review`, `contacted`, `interview`, `approved`, and `rejected`. A later product decision may change it.
+The confirmed lifecycle is `submitted`, `under_review`, `contacted`, `interview`, `accepted`, and `rejected`. Only the two final states send a decision email.
 
 ## Membership and onboarding
 
-An approved application creates a membership linked to the applicant's existing account. For a person recruited outside the application forms, a content manager with `accounts.manage_hr` starts an invitation using the person's name and email. The system creates or reuses the account, then sends a secure acceptance/onboarding email.
+An accepted application creates a membership linked to the applicant's existing account. For a person recruited outside the application forms, a content manager with `accounts.manage_hr` starts an invitation using the person's name and email. The system creates or reuses the account, then sends a secure acceptance/onboarding email.
 
 Each active membership contains one department and one position. A person may have only one active placement at a time, while previous placements remain as history. A former member keeps the same account when applying again.
 
-Approval creates the membership record, but member-area access remains blocked until required onboarding is complete. National ID collection follows decision [D-010](../architecture/DECISIONS.md), and complete-value access follows decision [D-016](../architecture/DECISIONS.md).
+Acceptance creates the membership record, but member-area access remains blocked until required onboarding is complete. National ID collection follows decision [D-010](../architecture/DECISIONS.md), and complete-value access follows decision [D-016](../architecture/DECISIONS.md).
 
 ## Member area
 

@@ -10,25 +10,13 @@ Can users change their own email address? If yes, must the new address be verifi
 
 ## Recruitment and membership
 
-### Q-003 — Non-application membership path
-
-Should V1 still allow a person to submit a direct membership request, or is the only non-application path an invitation started by a content manager with `accounts.manage_hr` after an external interview?
-
 ### Q-005 — Reapplication
 
 Can a rejected applicant apply to the same opportunity again? Under which campaign or time rule?
 
-### Q-017 — Invited-account phone number
-
-The current user model requires a unique phone number. For a person invited with only name and email, does the HR-authorized content manager enter the phone number, or does the invitee provide it while setting up the account?
-
 ### Q-018 — Other applications after acceptance
 
-When one application is approved and creates the active membership, should the applicant's other pending applications be automatically withdrawn, rejected, or remain open?
-
-### Q-019 — Membership activation point
-
-Should membership use `pending_onboarding` immediately after acceptance and become `active` only after onboarding, or should it be active immediately while member-area access remains separately blocked?
+When one application is accepted and creates or reactivates membership, should the applicant's other pending applications be automatically withdrawn, rejected, or remain open?
 
 ### Q-020 — Administrator scope for national ID
 
@@ -39,10 +27,6 @@ Does national ID access belong to the global `account_administrator`, or will th
 ### Q-007 — Capacity with manual approval
 
 Does a pending registration reserve a place, or does only approval consume capacity?
-
-### Q-008 — Duplicate registration
-
-Is a duplicate defined by the same event and email, or by another combination?
 
 ### Q-009 — Participant cancellation
 
@@ -62,10 +46,6 @@ What happens to registrations, QR tickets, and notifications when a published ev
 
 ## Content and operations
 
-### Q-013 — Draft state
-
-Do content and events require an internal draft state before publication?
-
 ### Q-014 — Important-content notification
 
 What makes content or an event important enough to create an internal announcement?
@@ -77,3 +57,7 @@ Are donation-intent records part of V1?
 ### Q-016 — CMS audit coverage
 
 Must every publication and archive action be audited in V1?
+
+### Q-021 — Production media storage
+
+Will production media use a managed object-storage provider or a self-hosted SeaweedFS deployment owned by the organization? Do not install or integrate either option until the team approves the deployment model.

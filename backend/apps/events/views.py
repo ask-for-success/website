@@ -5,6 +5,8 @@ from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.permissions import is_content_manager
+
 from .models import Event, EventScanner, PublicationStatus
 from .operations import (
     check_in_event_registration,
@@ -22,18 +24,6 @@ from .serializers import (
     EventSerializer,
     convert_validation_error,
 )
-
-
-def is_content_manager(user) -> bool:
-    return bool(
-        user.is_authenticated
-        and (
-            user.is_superuser
-            or user.groups.filter(name="content_manager").exists()
-        )
-    )
-
-
 class EventListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "GET":

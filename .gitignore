@@ -8,5 +8,7 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+backend/media/
+backend/private_media/
 .idea/
 .vscode/

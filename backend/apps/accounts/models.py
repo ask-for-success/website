@@ -64,7 +64,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             self.phone_number = self.phone_number.strip()
         elif self.is_active:
             raise ValidationError(
-                {"phone_number": "Un compte actif doit avoir un numero de telephone."}
+                {"phone_number": "An active account must have a phone number."}
             )
 
     def __str__(self) -> str:

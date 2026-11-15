@@ -16,7 +16,7 @@ HR is not a global role or a dedicated account type. `accounts.manage_hr` is an 
 The following concepts are intentionally not global roles:
 
 - an applicant is an authenticated user acting on their own applications;
-- membership will come from the future membership record;
+- membership comes from the durable membership record;
 - event check-in access will be assigned for one event at a time;
 - `is_staff` controls Django administration access and is separate from business roles;
 - a superuser is reserved for technical bootstrap and emergency administration.
@@ -48,4 +48,4 @@ For manual review, import [AFS_Access_Control.postman_collection.json](./AFS_Acc
 
 ## Review boundary
 
-This phase establishes global authorization only. Account activation endpoints, recruitment data, memberships, CMS models, events, event-specific permissions, and audit records remain separate future domains.
+Global authorization is implemented and reused by the membership, CMS, and event domains. Recruitment, national ID access, and the audit log remain separate future work.

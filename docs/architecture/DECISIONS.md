@@ -56,7 +56,7 @@ A member has exactly one active department and position at a time. Multiple appl
 
 ## D-014 — Admission paths
 
-An approved application creates a membership for the candidate's existing active account. A person recruited outside the application forms receives an invitation created by a content manager with HR permission. The system creates an inactive invited account, membership, onboarding record, and initial assignment. Reissuing the invitation reuses only that inactive invited account.
+An accepted application creates a membership for the candidate's existing active account. A person recruited outside the application forms receives an invitation created by a content manager with HR permission. The system creates an inactive invited account, membership, onboarding record, and initial assignment. Reissuing the invitation reuses only that inactive invited account.
 
 ## D-015 — Applying after departure
 
@@ -91,3 +91,27 @@ Every content manager can create and update events, build forms, view registrati
 Event registration is public and never creates an account. One email address can register only once per event, case-insensitively. Forms support short text, long text, email, phone, single choice, multiple choice, and yes/no questions.
 
 When QR check-in is enabled, the system creates and emails a secure ticket immediately after registration without manual approval. Only the QR token hash is stored. A content manager can assign any active member as a scanner for one event. The first valid scan records check-in; later scans report that the ticket is already checked in.
+
+## D-022 — News and gallery CMS
+
+Every content manager can manage news, gallery items, their categories, and the editable heading and introduction for each page. No additional CMS or HR permission is required. Public read operations do not require an account.
+
+News and gallery categories are independent. The frontend owns layout and the synthetic **All** filter, while the backend owns content, ordering, visibility, and pagination. Draft and archived content remains private. Scheduled content becomes public when its publication time is reached.
+
+Article bodies use Markdown. The CMS sends the source through `body_markdown`, and PostgreSQL stores that source instead of generated HTML. Inline images are Markdown URLs that refer to files outside PostgreSQL. The public frontend converts Markdown to sanitized HTML, with raw HTML disabled or sanitized and unsafe URL schemes rejected. Production object storage requires separate operational configuration.
+
+## D-023 — Membership activation and departure
+
+Admission creates one durable membership in `pending_onboarding`, one onboarding record, and one current assignment. Starting onboarding does not activate membership. Completing onboarding changes the membership to `active`, and completed onboarding cannot be reopened.
+
+A department transfer atomically ends the current assignment and creates one replacement without repeating onboarding. A departure requires a reason, ends the current assignment, and changes the membership to `inactive` without deleting the account or history. Reactivation requires a later accepted recruitment decision and is not a general membership-management action.
+
+## D-024 — Recruitment applications and private CVs
+
+A reusable recruitment form belongs to one department and one position. An HR-authorized content manager builds its ordered questions, activates it, and publishes an opportunity that uses it. Department, position, and questions lock after the first application so stored answers retain their meaning.
+
+An application requires an authenticated existing account and is unique per account and opportunity. It stores read-only answers and one PDF CV no larger than 10 MB. CV bytes remain outside PostgreSQL and are available only through an authenticated endpoint to the applicant or an HR-authorized content manager. Private CVs never use a public media URL.
+
+Application states are `submitted`, `under_review`, `contacted`, `interview`, `accepted`, and `rejected`. Only accepted and rejected are final, record the decision actor and time, and trigger a decision email. Delivery failure is recorded without reversing the decision.
+
+Acceptance creates pending membership and an initial assignment for a new member. It reactivates the same durable membership without repeating completed onboarding for a former member. A pending or active member requires the explicit transfer workflow instead of direct acceptance.

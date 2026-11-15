@@ -42,7 +42,9 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.memberships",
     "apps.events",
+    "apps.content",
     "apps.organization",
+    "apps.recruitment",
 ]
 
 MIDDLEWARE = [
@@ -106,7 +108,7 @@ EMAIL_BACKEND = os.getenv(
 )
 DEFAULT_FROM_EMAIL = os.getenv(
     "AFS_DEFAULT_FROM_EMAIL",
-    "ne-pas-repondre@askforsuccess.local",
+    "no-reply@askforsuccess.local",
 )
 EMAIL_HOST = os.getenv("AFS_EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("AFS_EMAIL_PORT", "587"))
@@ -115,6 +117,9 @@ EMAIL_HOST_PASSWORD = os.getenv("AFS_EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = get_boolean("AFS_EMAIL_USE_TLS", True)
 
 STATIC_URL = "static/"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+PRIVATE_MEDIA_ROOT = BASE_DIR / "private_media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 
@@ -145,6 +150,33 @@ SPECTACULAR_SETTINGS = {
         "deepLinking": True,
         "persistAuthorization": True,
         "displayRequestDuration": True,
+    },
+    "ENUM_NAME_OVERRIDES": {
+        "EventPublicationStatus": "apps.events.models.PublicationStatus",
+        "ContentPublicationStatus": "apps.content.models.PublicationStatus",
+        "MembershipStatus": "apps.memberships.models.MembershipStatus",
+        "OnboardingStatus": "apps.memberships.models.OnboardingStatus",
+        "MembershipInvitationStatus": (
+            "apps.memberships.models.MembershipInvitationStatus"
+        ),
+        "EventRegistrationStatus": (
+            "apps.events.models.EventRegistrationStatus"
+        ),
+        "RecruitmentFormStatus": (
+            "apps.recruitment.models.RecruitmentFormStatus"
+        ),
+        "RecruitmentQuestionType": (
+            "apps.recruitment.models.RecruitmentQuestionType"
+        ),
+        "RecruitmentOpportunityStatus": (
+            "apps.recruitment.models.OpportunityStatus"
+        ),
+        "RecruitmentApplicationStatus": (
+            "apps.recruitment.models.ApplicationStatus"
+        ),
+        "RecruitmentDecisionEmailStatus": (
+            "apps.recruitment.models.DecisionEmailStatus"
+        ),
     },
 }
 

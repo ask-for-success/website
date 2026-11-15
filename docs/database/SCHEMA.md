@@ -31,6 +31,8 @@ A membership represents the durable relationship between an account and the asso
 
 Each membership has at most one onboarding record. Onboarding belongs to the member and is not recreated during a department transfer.
 
+Admission starts the membership in `pending_onboarding`. Completing onboarding changes it to `active`. A recorded departure closes the current assignment and changes the membership to `inactive` while preserving the account and all history.
+
 An assignment links a membership to one department and one position. It records the assigning user, start date, optional end date, and closure reason. A partial unique PostgreSQL constraint guarantees only one active assignment per membership.
 
 All organization and membership tables, columns, constraints, models, and statuses use English identifiers.
@@ -50,6 +52,28 @@ The `event_registrations` table stores public registrations without creating use
 The `event_tickets` table exists only for registrations requiring QR check-in. It stores the QR token hash, delivery status, sent timestamp, and delivery error. The raw token is never stored.
 
 The `event_scanners` table assigns an active membership to one event. `event_check_ins` records the scanner and time. Its one-to-one ticket relationship guarantees one effective check-in per ticket.
+
+## News and gallery content
+
+The `content_page_settings` table stores the editable heading and introduction for the news and gallery pages. One row exists for each section.
+
+The `content_categories` table stores independent, ordered categories for news and gallery. Category names and slugs are case-insensitively unique inside their section. Deactivation hides associated public content while preserving it.
+
+The `news_articles` table stores the title, case-insensitively unique slug, card excerpt, original Markdown body, cover-image path and alternative text, category, publication state and time, featured state, display order, responsible users, and timestamps. Inline article images are represented by URLs inside the Markdown; their bytes are not stored in PostgreSQL.
+
+The `gallery_items` table stores the image path, alternative text, optional caption, category, publication state and time, display order, responsible users, and timestamps.
+
+Image files remain outside PostgreSQL. The database stores their relative media paths. Draft and archived records remain available to content managers; public queries return only due published or scheduled records whose category is active.
+
+## Recruitment
+
+The `recruitment_forms` table connects one reusable form to one department and one position. Its ordered questions and choice options use the same seven approved input types as event forms. Form names are case-insensitively unique within their department and position.
+
+The `recruitment_opportunities` table stores public campaign content, an opening window, publication state, and the selected form. Slugs are case-insensitively unique.
+
+The `recruitment_applications` table connects one authenticated applicant to one opportunity and records workflow state, final decision actor and time, and decision-email delivery state. A database constraint permits only one application per applicant and opportunity. `recruitment_answers` stores one immutable JSON value per application question.
+
+The `application_cvs` table stores one CV metadata record per application: private file path, original name, MIME type, size, SHA-256 hash, and upload time. PDF bytes remain outside PostgreSQL and are not exposed through public media URLs.
 
 ## Token infrastructure
 

@@ -180,3 +180,151 @@ Table event_check_ins {
   checked_in_by_id uuid [not null, ref: > users.id]
   checked_in_at timestamptz [not null]
 }
+
+Table content_page_settings {
+  id uuid [pk, not null]
+  section varchar(16) [not null, unique, note: "News or gallery"]
+  heading varchar(200) [not null]
+  introduction text [not null, default: ""]
+  updated_by_id uuid [ref: > users.id]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table content_categories {
+  id uuid [pk, not null]
+  section varchar(16) [not null, note: "News or gallery"]
+  name varchar(100) [not null]
+  slug varchar(120) [not null]
+  display_order integer [not null, default: 0]
+  is_active boolean [not null, default: true]
+  created_by_id uuid [ref: > users.id]
+  updated_by_id uuid [ref: > users.id]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "Name and slug are case-insensitively unique within a section."
+}
+
+Table news_articles {
+  id uuid [pk, not null]
+  category_id uuid [not null, ref: > content_categories.id]
+  title varchar(220) [not null]
+  slug varchar(240) [not null, unique, note: "Protected by a case-insensitive unique constraint"]
+  excerpt text [not null]
+  body_markdown text [not null, note: "Original Markdown; generated HTML and inline image bytes are not stored in PostgreSQL"]
+  cover_image varchar(100) [not null, note: "Relative media path; image bytes are not stored in PostgreSQL"]
+  cover_alt_text varchar(250) [not null]
+  publication_status varchar(16) [not null, default: "draft"]
+  published_at timestamptz
+  is_featured boolean [not null, default: false]
+  display_order integer [not null, default: 0]
+  created_by_id uuid [not null, ref: > users.id]
+  updated_by_id uuid [not null, ref: > users.id]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table gallery_items {
+  id uuid [pk, not null]
+  category_id uuid [not null, ref: > content_categories.id]
+  image varchar(100) [not null, note: "Relative media path; image bytes are not stored in PostgreSQL"]
+  alt_text varchar(250) [not null]
+  caption varchar(250) [not null, default: ""]
+  publication_status varchar(16) [not null, default: "draft"]
+  published_at timestamptz
+  display_order integer [not null, default: 0]
+  created_by_id uuid [not null, ref: > users.id]
+  updated_by_id uuid [not null, ref: > users.id]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table recruitment_forms {
+  id uuid [pk, not null]
+  department_id uuid [not null, ref: > departments.id]
+  position_id uuid [not null, ref: > positions.id]
+  name varchar(200) [not null]
+  description text [not null, default: ""]
+  status varchar(16) [not null, default: "draft"]
+  created_by_id uuid [not null, ref: > users.id]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "Name is case-insensitively unique within one department and position."
+}
+
+Table recruitment_questions {
+  id uuid [pk, not null]
+  form_id uuid [not null, ref: > recruitment_forms.id]
+  label varchar(300) [not null]
+  help_text varchar(500) [not null, default: ""]
+  question_type varchar(32) [not null]
+  is_required boolean [not null, default: false]
+  display_order integer [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "Display order is unique within a form."
+}
+
+Table recruitment_question_options {
+  id uuid [pk, not null]
+  question_id uuid [not null, ref: > recruitment_questions.id]
+  label varchar(200) [not null]
+  display_order integer [not null]
+
+  Note: "Display order is unique within a question."
+}
+
+Table recruitment_opportunities {
+  id uuid [pk, not null]
+  form_id uuid [not null, ref: > recruitment_forms.id]
+  title varchar(220) [not null]
+  slug varchar(240) [not null, unique, note: "Protected by a case-insensitive unique constraint"]
+  summary text [not null]
+  description_markdown text [not null]
+  status varchar(16) [not null, default: "draft"]
+  opens_at timestamptz
+  closes_at timestamptz
+  created_by_id uuid [not null, ref: > users.id]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table recruitment_applications {
+  id uuid [pk, not null]
+  opportunity_id uuid [not null, ref: > recruitment_opportunities.id]
+  applicant_id uuid [not null, ref: > users.id]
+  status varchar(24) [not null, default: "submitted"]
+  decision_by_id uuid [ref: > users.id]
+  decided_at timestamptz
+  decision_email_status varchar(16) [not null, default: "not_required"]
+  decision_email_sent_at timestamptz
+  decision_email_error text [not null, default: ""]
+  submitted_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "Applicant is unique within an opportunity."
+}
+
+Table recruitment_answers {
+  id uuid [pk, not null]
+  application_id uuid [not null, ref: > recruitment_applications.id]
+  question_id uuid [not null, ref: > recruitment_questions.id]
+  value jsonb [not null]
+  created_at timestamptz [not null]
+
+  Note: "One answer is stored per application and question."
+}
+
+Table application_cvs {
+  id uuid [pk, not null]
+  application_id uuid [not null, unique, ref: > recruitment_applications.id]
+  file varchar(500) [not null, note: "Private relative storage path; never a public media URL"]
+  original_filename varchar(255) [not null]
+  content_type varchar(100) [not null]
+  size bigint [not null]
+  sha256 varchar(64) [not null]
+  uploaded_at timestamptz [not null]
+}

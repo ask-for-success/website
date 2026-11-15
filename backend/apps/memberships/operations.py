@@ -9,6 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.accounts.permissions import is_hr_manager
 from apps.organization.models import Department, Position
 
 from .models import (
@@ -17,6 +18,8 @@ from .models import (
     MembershipInvitation,
     MembershipInvitationStatus,
     MembershipOnboarding,
+    MembershipStatus,
+    OnboardingStatus,
 )
 
 
@@ -34,12 +37,7 @@ def _hash_token(token: str) -> str:
 
 
 def ensure_hr_manager(user) -> None:
-    if user.is_superuser:
-        return
-
-    is_content_manager = user.groups.filter(name="content_manager").exists()
-    has_hr_permission = user.has_perm("accounts.manage_hr")
-    if not is_content_manager or not has_hr_permission:
+    if not is_hr_manager(user):
         raise PermissionDenied(
             "This operation requires content-manager access and HR permission."
         )
@@ -49,6 +47,14 @@ def ensure_position_department(
     position: Position,
     department: Department,
 ) -> None:
+    if not department.is_active:
+        raise ValidationError(
+            {"department": "The selected department is inactive."}
+        )
+    if not position.is_active:
+        raise ValidationError(
+            {"position": "The selected position is inactive."}
+        )
     if position.department_id != department.id:
         raise ValidationError(
             {"position": "The position must belong to the selected department."}
@@ -66,12 +72,13 @@ def create_initial_membership(
     ensure_hr_manager(assigned_by)
     ensure_position_department(position, department)
 
-    if Membership.objects.filter(user=user).exists():
+    locked_user = User.objects.select_for_update().get(pk=user.pk)
+    if Membership.objects.filter(user=locked_user).exists():
         raise ValidationError(
             {"user": "This user already has a membership."}
         )
 
-    membership = Membership.objects.create(user=user)
+    membership = Membership.objects.create(user=locked_user)
     MembershipOnboarding.objects.create(membership=membership)
     assignment = MemberAssignment(
         membership=membership,
@@ -82,6 +89,25 @@ def create_initial_membership(
     assignment.full_clean()
     assignment.save()
     return membership
+
+
+def admit_existing_account(
+    *,
+    user: User,
+    department: Department,
+    position: Position,
+    admitted_by,
+) -> Membership:
+    if not user.is_active:
+        raise ValidationError(
+            {"user": "An existing account must be active before admission."}
+        )
+    return create_initial_membership(
+        user=user,
+        department=department,
+        position=position,
+        assigned_by=admitted_by,
+    )
 
 
 @transaction.atomic
@@ -103,6 +129,10 @@ def transfer_member(
     locked_membership = Membership.objects.select_for_update().get(
         pk=membership.pk
     )
+    if locked_membership.status == MembershipStatus.INACTIVE:
+        raise ValidationError(
+            {"membership": "An inactive membership cannot be transferred."}
+        )
     try:
         current_assignment = MemberAssignment.objects.select_for_update().get(
             membership=locked_membership,
@@ -138,6 +168,158 @@ def transfer_member(
     new_assignment.full_clean()
     new_assignment.save()
     return new_assignment
+
+
+@transaction.atomic
+def update_onboarding_status(
+    *,
+    membership: Membership,
+    new_status: str,
+    updated_by,
+) -> MembershipOnboarding:
+    ensure_hr_manager(updated_by)
+
+    locked_membership = Membership.objects.select_for_update().select_related(
+        "user"
+    ).get(pk=membership.pk)
+    if locked_membership.status == MembershipStatus.INACTIVE:
+        raise ValidationError(
+            {"membership": "An inactive membership cannot continue onboarding."}
+        )
+    if not locked_membership.user.is_active:
+        raise ValidationError(
+            {
+                "membership": (
+                    "The invited account must be set up before onboarding starts."
+                )
+            }
+        )
+
+    onboarding = MembershipOnboarding.objects.select_for_update().get(
+        membership=locked_membership
+    )
+    now = timezone.now()
+
+    if new_status == OnboardingStatus.IN_PROGRESS:
+        if onboarding.status == OnboardingStatus.COMPLETED:
+            raise ValidationError(
+                {"status": "Completed onboarding cannot be reopened."}
+            )
+        if onboarding.status == OnboardingStatus.NOT_STARTED:
+            onboarding.status = OnboardingStatus.IN_PROGRESS
+            onboarding.started_at = now
+            onboarding.save(
+                update_fields=("status", "started_at", "updated_at")
+            )
+        return onboarding
+
+    if new_status == OnboardingStatus.COMPLETED:
+        if onboarding.status == OnboardingStatus.NOT_STARTED:
+            raise ValidationError(
+                {"status": "Onboarding must be started before completion."}
+            )
+        if onboarding.status != OnboardingStatus.COMPLETED:
+            onboarding.status = OnboardingStatus.COMPLETED
+            onboarding.completed_at = now
+            onboarding.save(
+                update_fields=("status", "completed_at", "updated_at")
+            )
+            locked_membership.status = MembershipStatus.ACTIVE
+            locked_membership.save(update_fields=("status", "updated_at"))
+        return onboarding
+
+    raise ValidationError(
+        {"status": "Status must be in_progress or completed."}
+    )
+
+
+@transaction.atomic
+def record_member_departure(
+    *,
+    membership: Membership,
+    recorded_by,
+    reason: str,
+) -> Membership:
+    ensure_hr_manager(recorded_by)
+
+    reason = reason.strip()
+    if not reason:
+        raise ValidationError({"reason": "A departure reason is required."})
+
+    locked_membership = Membership.objects.select_for_update().get(
+        pk=membership.pk
+    )
+    if locked_membership.status != MembershipStatus.ACTIVE:
+        raise ValidationError(
+            {"membership": "Only an active membership can record a departure."}
+        )
+    try:
+        current_assignment = MemberAssignment.objects.select_for_update().get(
+            membership=locked_membership,
+            ends_at__isnull=True,
+        )
+    except MemberAssignment.DoesNotExist as error:
+        raise ValidationError(
+            {"membership": "The active membership has no current assignment."}
+        ) from error
+
+    now = timezone.now()
+    current_assignment.ends_at = now
+    current_assignment.end_reason = reason
+    current_assignment.save(
+        update_fields=("ends_at", "end_reason", "updated_at")
+    )
+    locked_membership.status = MembershipStatus.INACTIVE
+    locked_membership.save(update_fields=("status", "updated_at"))
+    return locked_membership
+
+
+@transaction.atomic
+def reactivate_membership_after_acceptance(
+    *,
+    membership: Membership,
+    department: Department,
+    position: Position,
+    assigned_by,
+) -> Membership:
+    ensure_hr_manager(assigned_by)
+    ensure_position_department(position, department)
+
+    locked_membership = Membership.objects.select_for_update().get(
+        pk=membership.pk
+    )
+    if locked_membership.status != MembershipStatus.INACTIVE:
+        raise ValidationError(
+            {"membership": "Only an inactive membership can be reactivated."}
+        )
+    if MemberAssignment.objects.filter(
+        membership=locked_membership,
+        ends_at__isnull=True,
+    ).exists():
+        raise ValidationError(
+            {"membership": "The inactive membership already has an assignment."}
+        )
+    if locked_membership.onboarding.status != OnboardingStatus.COMPLETED:
+        raise ValidationError(
+            {
+                "membership": (
+                    "A former member must have completed onboarding before "
+                    "reactivation."
+                )
+            }
+        )
+
+    assignment = MemberAssignment(
+        membership=locked_membership,
+        department=department,
+        position=position,
+        assigned_by=assigned_by,
+    )
+    assignment.full_clean()
+    assignment.save()
+    locked_membership.status = MembershipStatus.ACTIVE
+    locked_membership.save(update_fields=("status", "updated_at"))
+    return locked_membership
 
 
 @transaction.atomic
