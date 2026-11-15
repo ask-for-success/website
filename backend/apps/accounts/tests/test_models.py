@@ -63,6 +63,19 @@ class UserModelTests(TestCase):
         with self.assertRaises(ValidationError):
             User.objects.create_user(**self.valid_user_data(phone_number=""))
 
+    def test_inactive_invited_user_can_temporarily_have_no_phone_number(self):
+        user = User.objects.create_user(
+            **self.valid_user_data(
+                phone_number=None,
+                is_active=False,
+                password=None,
+            )
+        )
+
+        self.assertIsNone(user.phone_number)
+        self.assertFalse(user.is_active)
+        self.assertFalse(user.has_usable_password())
+
     def test_first_and_last_names_are_stored_separately(self):
         user = User.objects.create_user(**self.valid_user_data())
 

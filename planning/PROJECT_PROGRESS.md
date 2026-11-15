@@ -1,72 +1,92 @@
-# Project Progress
+# Project progress
 
 **Last updated:** November 14, 2026
 
-This file records work status without copying requirements, models, or API contracts. Functional details are in the [V1 scope](../docs/business/BACKEND_SCOPE_V1.md).
+This file records delivery status without duplicating requirements, database models, or API contracts.
 
 ## Current position
 
-- **Completed:** Django, PostgreSQL, Docker, user accounts, and authentication implementation.
-- **In review:** global roles, permissions, and frontend authorization contract.
-- **Parallel review:** authentication behavior and frontend contract.
-- **Requirements clarification:** organization, membership, and onboarding.
+- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, event foundation, public event registration, QR tickets, scanner assignments, and check-in.
+- **Under review:** global roles, permissions, authentication behavior, and frontend contracts.
+- **In progress:** organization, membership, invitations, onboarding, and production email delivery.
 
 ## Delivery phases
 
 | Phase | Status | Exit condition |
 |---|---|---|
-| 1. Foundation | Complete | Local environment, structure, and documentation are operational. |
-| 2. Accounts and authentication | In review | Product behavior is approved and the frontend confirms the contract. |
-| 3. Roles and permissions | In review | Frontend confirmation of the implemented authorization contract. |
-| 4. Organization, membership, and onboarding | Clarifying requirements | Membership lifecycle and member access are validated. |
-| 5. Integrated recruitment | Not started | Forms, applications, and decisions are validated. |
-| 6. CMS and content | Not started | Publishing and media-library behavior are validated. |
-| 7. Events and attendance | Not started | Registration, QR tickets, and check-in are validated. |
+| 1. Foundation | Completed | Local environment, structure, and documentation operate correctly. |
+| 2. Accounts and authentication | Under review | Product and frontend approve the behavior. |
+| 3. Roles and permissions | Under review | Frontend confirms the authorization contract. |
+| 4. Organization, membership, and onboarding | In progress | Membership lifecycle, assignments, and member access are validated. |
+| 5. Integrated recruitment | Not started | Forms, applications, interviews, and decisions are validated. |
+| 6. Content management | Not started | News, editable pages, and media are validated. |
+| 7. Events and check-in | In progress | Registration, tickets, delivery, and check-in are production-ready. |
 | 8. Administration and audit | Not started | Administration and traceability are validated. |
-| 9. Production services | Not started | Operational requirements are implemented. |
+| 9. Production services | Not started | Operational requirements are complete. |
 
-## Current phase review
+## Accounts and authentication
 
 - [x] User model and migration.
 - [x] Registration and login.
-- [x] Complete JWT lifecycle.
+- [x] Complete token lifecycle.
 - [x] Current-user profile read and update.
 - [x] Password change and session revocation.
 - [x] Automated tests.
-- [x] Validated Swagger, ReDoc, and OpenAPI schema.
+- [x] Swagger, ReDoc, and OpenAPI validation.
 - [x] Postman collection.
-- [ ] Product-owner approval.
-- [ ] Frontend-team confirmation.
+- [ ] Final product-owner approval.
+- [ ] Frontend confirmation.
 
-## Authorization phase
+## Authorization
 
 - [x] Confirm global role boundaries.
-- [x] Use Django groups and permissions instead of a role field.
+- [x] Use Django groups and permissions without a role field on the user.
 - [x] Define account-administrator and content-manager roles.
 - [x] Define HR access as an individual permission for selected content managers.
 - [x] Keep membership outside global roles.
-- [x] Reserve event check-in for event-specific authorization.
-- [x] Add current-user access API.
-- [x] Add protected role catalog and assignment APIs.
-- [x] Add migration seeding for roles and permissions.
-- [x] Add automated permission and schema tests.
-- [x] Add frontend-facing authorization documentation.
-- [x] Add an access-control Postman collection.
-- [x] Product-owner approval of the role matrix.
-- [ ] Frontend-team confirmation of the authorization contract.
+- [x] Keep scanner access specific to each event.
+- [x] Add access inspection and assignment APIs.
+- [x] Add migrations, tests, documentation, and Postman coverage.
+- [x] Obtain product-owner approval for the matrix.
+- [ ] Obtain frontend confirmation.
 
-Organization and membership implementation begins after authorization review.
+## Organization and membership
 
-## Membership clarification
-
-- [x] Confirm one active department and position per member.
-- [x] Allow applications to multiple departments before acceptance.
-- [x] Preserve account and membership history after leaving.
+- [x] Confirm one active assignment per member.
+- [x] Retain account and history after departure.
 - [x] Reuse the same account for later applications.
-- [x] Allow HR-authorized content managers to start invitations for externally interviewed people.
-- [x] Restrict complete national ID access to HR-authorized content managers and the approved administrator scope.
-- [ ] Confirm invited-account phone-number collection.
-- [ ] Confirm the effect of acceptance on other pending applications.
-- [ ] Confirm the membership activation point relative to onboarding.
-- [ ] Confirm whether national ID administrator access is global or department-scoped.
-- [ ] Confirm whether self-submitted direct membership requests remain in V1.
+- [x] Keep onboarding unchanged during department transfers.
+- [x] Require an authorized HR content manager, reason, and history for transfers.
+- [x] Create department and position models.
+- [x] Create membership, assignment-history, and onboarding models.
+- [x] Create secure invitations for people recruited outside forms.
+- [x] Use a single-use invitation token that expires after forty-eight hours and is stored only as a hash.
+- [x] Allow a missing phone number only for inactive invited accounts.
+- [x] Add invitation creation and acceptance APIs.
+- [x] Add automated tests and Swagger documentation.
+- [ ] Translate the remaining legacy organization and membership implementation into English.
+- [ ] Add the remaining membership APIs and frontend contract.
+
+## Events and check-in
+
+- [x] Allow every content manager to create and update events.
+- [x] Support the seven approved form-question types.
+- [x] Allow public registration without an account.
+- [x] Enforce one registration per email address and event.
+- [x] Generate a QR ticket when required.
+- [x] Send the QR code automatically after registration.
+- [x] Separate registration, delivery, and check-in state.
+- [x] Allow content managers to assign active members as event scanners.
+- [x] Limit scanner access to the assigned event.
+- [x] Make the first check-in unique and report later scans.
+- [x] Translate event code, API fields, routes, tables, tests, Swagger, and documentation into English.
+- [x] Apply and verify the English event database schema.
+- [ ] Configure and validate the production email provider.
+- [ ] Confirm the event contract with the frontend team.
+
+## Next implementation
+
+1. Translate the older organization and membership modules into English without losing data.
+2. Build the news CMS with draft, published, and archived states.
+3. Define editable page sections before implementing page-content APIs.
+4. Configure the production email provider before external QR testing.

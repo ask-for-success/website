@@ -40,6 +40,9 @@ INSTALLED_APPS = [
     "drf_spectacular_sidecar",
     "rest_framework_simplejwt.token_blacklist",
     "apps.accounts",
+    "apps.adhesions",
+    "apps.events",
+    "apps.organisation",
 ]
 
 MIDDLEWARE = [
@@ -96,6 +99,20 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Africa/Casablanca"
 USE_I18N = True
 USE_TZ = True
+
+EMAIL_BACKEND = os.getenv(
+    "AFS_EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = os.getenv(
+    "AFS_DEFAULT_FROM_EMAIL",
+    "ne-pas-repondre@askforsuccess.local",
+)
+EMAIL_HOST = os.getenv("AFS_EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("AFS_EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("AFS_EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("AFS_EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = get_boolean("AFS_EMAIL_USE_TLS", True)
 
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

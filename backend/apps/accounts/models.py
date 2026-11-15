@@ -1,6 +1,7 @@
 import uuid
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Lower
 
@@ -12,7 +13,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=254, unique=True)
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
-    phone_number = models.CharField(max_length=32, unique=True)
+    phone_number = models.CharField(
+        max_length=32,
+        unique=True,
+        null=True,
+        blank=True,
+    )
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -38,13 +44,28 @@ class User(AbstractBaseUser, PermissionsMixin):
             models.UniqueConstraint(
                 Lower("email"),
                 name="users_email_case_insensitive_unique",
-            )
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(is_active=False)
+                    | (
+                        models.Q(phone_number__isnull=False)
+                        & ~models.Q(phone_number="")
+                    )
+                ),
+                name="utilisateurs_actifs_avec_telephone",
+            ),
         ]
 
     def clean(self) -> None:
         super().clean()
         self.email = self.__class__.objects.normalize_email(self.email).lower()
-        self.phone_number = self.phone_number.strip()
+        if self.phone_number:
+            self.phone_number = self.phone_number.strip()
+        elif self.is_active:
+            raise ValidationError(
+                {"phone_number": "Un compte actif doit avoir un numero de telephone."}
+            )
 
     def __str__(self) -> str:
         return self.email

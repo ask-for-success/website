@@ -57,7 +57,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         extra_kwargs = {
             "email": {"validators": []},
-            "phone_number": {"validators": []},
+            "phone_number": {
+                "validators": [],
+                "required": True,
+                "allow_null": False,
+                "allow_blank": False,
+            },
         }
 
     def validate_email(self, value: str) -> str:

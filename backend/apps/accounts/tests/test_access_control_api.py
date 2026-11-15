@@ -115,8 +115,8 @@ class AccessControlApiTests(APITestCase):
                 {
                     "key": "accounts.manage_hr",
                     "description": (
-                        "Allows a content manager to manage recruitment and "
-                        "official membership records when those domains are implemented."
+                        "Allows a content manager to manage recruitment and official "
+                        "membership records."
                     ),
                     "requires_role": CONTENT_MANAGER,
                 }

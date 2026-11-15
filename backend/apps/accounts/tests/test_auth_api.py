@@ -67,6 +67,15 @@ class AuthenticationApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("phone_number", response.data)
 
+    def test_registration_requires_phone_number(self):
+        data = self.registration_data()
+        data.pop("phone_number")
+
+        response = self.client.post(self.register_url, data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("phone_number", response.data)
+
     def test_login_accepts_case_insensitive_email(self):
         self.register()
 

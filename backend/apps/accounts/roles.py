@@ -30,7 +30,10 @@ SYSTEM_ROLES = (
     ),
     RoleDefinition(
         key=CONTENT_MANAGER,
-        description="Manages CMS content when the CMS domain is implemented.",
+        description=(
+            "Manages website content, events, forms, and event-specific "
+            "scanner assignments."
+        ),
         permissions=("accounts.manage_content",),
     ),
 )
@@ -40,7 +43,7 @@ ADDITIONAL_PERMISSIONS = (
         key="accounts.manage_hr",
         description=(
             "Allows a content manager to manage recruitment and official "
-            "membership records when those domains are implemented."
+            "membership records."
         ),
         requires_role=CONTENT_MANAGER,
     ),

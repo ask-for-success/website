@@ -22,4 +22,6 @@ urlpatterns = [
     ),
     path("api/v1/auth/", include("apps.accounts.urls")),
     path("api/v1/access/", include("apps.accounts.access_urls")),
+    path("api/v1/adhesions/", include("apps.adhesions.urls")),
+    path("api/v1/events/", include("apps.events.urls")),
 ]

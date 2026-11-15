@@ -1,81 +1,93 @@
-# Décisions approuvées
+# Approved decisions
 
-Ce registre contient les décisions stables du projet. Les autres documents doivent y faire référence au lieu de recopier les mêmes règles.
+This register contains stable project decisions. Other documents should link here instead of repeating the same rules.
 
-## D-001 — Cadre du serveur
+## D-001 — Backend framework
 
-Le serveur utilise Django et Django REST Framework.
+The backend uses Django and Django REST Framework.
 
-## D-002 — Base de données
+## D-002 — Database
 
-PostgreSQL est la base de données de l'application. Les migrations Django définissent le schéma réel.
+PostgreSQL is the application database. Django migrations define the real schema.
 
-## D-003 — Environnement local
+## D-003 — Local environment
 
-Docker Compose fournit Django et PostgreSQL. Une infrastructure supplémentaire est ajoutée seulement lorsqu'une fonctionnalité approuvée l'exige.
+Docker Compose provides Django and PostgreSQL. Additional infrastructure is introduced only when an approved feature requires it.
 
-## D-004 — Identité utilisateur
+## D-004 — User identity
 
-Chaque utilisateur possède un identifiant universel unique et immuable. L'adresse électronique sert à la connexion, mais ne constitue pas l'identifiant de la base de données.
+Every user has an immutable UUID. Email is the login identifier, but it is not the database identifier.
 
-## D-005 — Modèle de compte unique
+## D-005 — One account model
 
-Les candidats, membres, gestionnaires et administrateurs partagent le même modèle de compte. Les responsabilités métier restent séparées de l'authentification.
+Candidates, members, content managers, and administrators share one account model. Business responsibilities remain separate from authentication.
 
-## D-006 — Absence de vérification initiale de l'adresse électronique
+## D-006 — No initial email verification
 
-Un compte actif peut se connecter immédiatement après son inscription. Aucun modèle de vérification initiale de l'adresse électronique n'est prévu.
+An active account can log in immediately after registration. Initial email verification is not part of the current design.
 
-## D-007 — Authentification par jetons
+## D-007 — Token authentication
 
-Le jeton d'accès dure quinze minutes et le jeton de renouvellement dure sept jours. Le renouvellement remplace la paire, la déconnexion révoque le jeton transmis et le changement de mot de passe invalide les sessions.
+Access tokens last fifteen minutes and refresh tokens last seven days. Refresh rotates the pair, logout revokes the submitted refresh token, and password changes invalidate existing sessions.
 
-## D-008 — Langue du projet
+## D-008 — Project language
 
-Tous les livrables du projet sont rédigés en français, sauf demande explicite de l'utilisateur pour un livrable précis.
+English is mandatory for all project artifacts unless the user explicitly requests another language for one specific deliverable.
 
-## D-009 — Traduction de l'interface
+## D-009 — Interface translation
 
-Le frontend traduit les libellés fixes. Le contenu dynamique du gestionnaire de contenu utilise actuellement une seule langue source. Un stockage multilingue nécessite une nouvelle conception approuvée.
+The frontend translates fixed labels. CMS content currently uses one source language. Multilingual content storage requires a separately approved design.
 
-## D-010 — Identité nationale après admission
+## D-010 — National identity after admission
 
-Le numéro d'identité nationale est demandé pendant l'intégration d'un membre accepté, jamais pendant l'inscription. Aucun scan, image ou fichier de pièce d'identité n'est accepté.
+The national identity number is requested during onboarding after admission, never during public registration. The system does not accept identity-card scans, images, or files.
 
-## D-011 — Contrat OpenAPI généré
+## D-011 — Generated OpenAPI contract
 
-La bibliothèque de génération produit OpenAPI, Swagger et ReDoc à partir des sérialiseurs et des vues. Chaque nouvelle route doit déclarer sa requête, ses réponses, son authentification, son résumé et sa description.
+OpenAPI, Swagger, and ReDoc are generated from serializers and views. Every new endpoint declares its request, responses, authentication, summary, and description.
 
-## D-012 — Modèle global d'autorisation
+## D-012 — Global authorization model
 
-Les rôles globaux utilisent les groupes Django et les capacités utilisent les permissions Django. Les rôles globaux approuvés sont l'administration des comptes et la gestion du contenu. L'accès aux opérations de ressources humaines est une permission individuelle réservée à certains gestionnaires de contenu ; ce n'est ni un rôle ni un type de compte. Le statut de candidat dépend du contexte, l'adhésion appartient au futur domaine des membres et le contrôle d'accès aux événements reste propre à chaque événement. La table des utilisateurs ne contient aucun champ de rôle.
+Global roles use Django groups and capabilities use Django permissions. Approved global roles are account administrator and content manager. HR access is an individual permission granted only to selected content managers; it is not a role or account type. Candidate status is contextual, membership belongs to the membership domain, and event scanner access is assigned per event. The user table has no role field.
 
-## D-013 — Une seule affectation active
+## D-013 — One active assignment
 
-Un membre possède exactement un département actif et un poste actif à un instant donné. Les candidatures multiples sont autorisées, mais aucune décision ne peut créer plusieurs affectations actives. L'historique des affectations est conservé.
+A member has exactly one active department and position at a time. Multiple applications are allowed, but no decision may create multiple active assignments. Assignment history is retained.
 
-## D-014 — Chemins d'admission
+## D-014 — Admission paths
 
-Une candidature approuvée crée une adhésion pour le compte existant du candidat. Pour une personne recrutée et interrogée en dehors des formulaires, un gestionnaire de contenu autorisé aux opérations de ressources humaines lance l'invitation. Le système crée ou réutilise le compte et envoie un message sécurisé d'acceptation et d'intégration. Un compte existant est toujours réutilisé afin d'éviter les doublons.
+An approved application creates a membership for the candidate's existing active account. A person recruited outside the application forms receives an invitation created by a content manager with HR permission. The system creates an inactive invited account, membership, onboarding record, and initial assignment. Reissuing the invitation reuses only that inactive invited account.
 
-## D-015 — Nouvelle candidature après un départ
+## D-015 — Applying after departure
 
-Lorsqu'un membre quitte l'association, son affectation active prend fin sans supprimer son compte ni son historique. La personne utilise le même compte pour présenter une nouvelle candidature et peut ensuite recevoir une nouvelle affectation unique.
+When a member leaves, the active assignment ends without deleting the account or history. The person uses the same account for a later application and can receive a new single active assignment.
 
-## D-016 — Accès au numéro d'identité nationale
+## D-016 — National identity access
 
-Le numéro complet est visible uniquement par un gestionnaire de contenu autorisé aux opérations de ressources humaines et par l'administrateur système autorisé. Chaque accès est sensible et doit être audité. Les autres utilisateurs ne reçoivent jamais la valeur complète.
+The complete national identity number is visible only to authorized HR content managers and authorized system administrators. Access is sensitive and must be audited. Other users never receive the complete value.
 
-## D-017 — Changement de département
+## D-017 — Department transfer
 
-Un membre déjà actif peut présenter une candidature à une nouvelle occasion dans un autre département. Une acceptation ultérieure ne crée ni une seconde adhésion, ni une seconde affectation active, ni une nouvelle intégration. Un gestionnaire de contenu autorisé aux opérations de ressources humaines effectue le changement de département.
+Accepting a current member into another department does not create another membership, active assignment, or onboarding process. An HR-authorized content manager performs an atomic transfer that closes the current assignment and creates the new one. The system records the previous and new departments and positions, actor, timestamp, and required reason.
 
-Le changement ferme l'affectation courante et crée la nouvelle affectation dans une seule transaction. Il enregistre obligatoirement l'ancien département, le nouveau département, l'ancien poste, le nouveau poste, le responsable de l'action, la date et le motif. Le membre reçoit une notification de changement. Son état d'intégration reste inchangé.
+## D-018 — No multi-department selection screen
 
-## D-018 — Absence de sélection entre plusieurs départements
+The product does not ask a member to select between several accepted departments. Initial admission creates the first assignment. Any later acceptance for an already assigned member uses the explicit transfer operation.
 
-Le produit ne propose aucun écran permettant de choisir entre plusieurs départements acceptés. La première admission crée l'affectation initiale. Toute acceptation concernant un membre déjà affecté doit passer par l'opération explicite de changement de département. Une approbation de candidature ne peut jamais contourner cette règle.
+## D-019 — Onboarding happens once
 
-## D-019 — Intégration unique
+Onboarding belongs to the member, not the department. Message delivery state and onboarding state are separate. Completed onboarding is never repeated after a department transfer, and no email counter determines onboarding status.
 
-L'intégration appartient au membre et non au département. Le système distingue l'état d'envoi des messages de l'état réel de l'intégration. Une intégration terminée n'est jamais répétée après un changement de département. Aucun compteur de messages ne décide de l'état d'intégration.
+## D-020 — Secure invited-account setup
+
+A membership invitation is created only after admission; accepting it never makes a recruitment decision. Its random token expires after forty-eight hours, works once, and is stored only as a hash. Reissuing an invitation immediately cancels the previous active invitation.
+
+The invited account remains inactive with no phone number and an unusable password until setup. The invited person supplies a unique phone number and password, which activates the account without recreating onboarding. Every active account must have a phone number.
+
+## D-021 — Events and check-in
+
+Every content manager can create and update events, build forms, view registrations, and assign scanners. No additional global permission or HR permission is required.
+
+Event registration is public and never creates an account. One email address can register only once per event, case-insensitively. Forms support short text, long text, email, phone, single choice, multiple choice, and yes/no questions.
+
+When QR check-in is enabled, the system creates and emails a secure ticket immediately after registration without manual approval. Only the QR token hash is stored. A content manager can assign any active member as a scanner for one event. The first valid scan records check-in; later scans report that the ticket is already checked in.

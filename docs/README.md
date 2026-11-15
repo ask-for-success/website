@@ -1,4 +1,4 @@
-# Project Documentation
+# Project documentation
 
 This file is the single entry point for project documentation. Each subject has one source of truth.
 
@@ -8,8 +8,10 @@ This file is the single entry point for project documentation. Each subject has 
 |---|---|
 | View available endpoints, required fields, and test the API | [Swagger](http://localhost:8000/api/docs/) |
 | Read the raw OpenAPI schema | [OpenAPI schema](http://localhost:8000/api/schema/) |
-| Understand tokens and the authentication flow | [Authentication guide](./api/AUTHENTICATION.md) |
+| Understand tokens and authentication | [Authentication guide](./api/AUTHENTICATION.md) |
 | Understand roles and permissions | [Authorization guide](./api/AUTHORIZATION.md) |
+| Understand membership invitations | [Membership guide](./api/ADHESIONS.md) |
+| Understand events, registrations, and check-in | [Events guide](./api/EVENTS.md) |
 | Test authentication manually | [Authentication Postman collection](./api/AFS_Authentication.postman_collection.json) |
 | Test roles and permissions manually | [Access-control Postman collection](./api/AFS_Access_Control.postman_collection.json) |
 | Understand the V1 functional scope | [Backend V1 scope](./business/BACKEND_SCOPE_V1.md) |
@@ -25,7 +27,7 @@ This file is the single entry point for project documentation. Each subject has 
 ## Documentation rules
 
 - Swagger describes only the API that is currently available.
-- The functional scope describes what V1 must cover, including features not implemented yet.
+- The functional scope describes all V1 requirements, including features that are not implemented yet.
 - The database document describes only implemented tables.
 - The progress tracker records status and links to detailed documents.
-- Link to the source of truth instead of copying the same information into another document.
+- Documents link to the source of truth instead of copying it.

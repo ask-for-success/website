@@ -1,13 +1,14 @@
 Project AFS_Backend {
   database_type: "PostgreSQL"
-  Note: "Only implemented project-owned tables are documented here. Django and SimpleJWT technical tables are managed by their migrations."
+  Note: "Only implemented business tables are shown. Django and JWT infrastructure tables are managed by their migrations."
 }
+
 Table users {
   id uuid [pk, not null]
   email varchar(254) [not null, unique, note: "Stored in lowercase and protected by a case-insensitive unique constraint"]
   first_name varchar(150) [not null]
   last_name varchar(150) [not null]
-  phone_number varchar(32) [not null, unique]
+  phone_number varchar(32) [unique, note: "Required for active accounts; temporarily empty only for inactive invited accounts"]
   password varchar(128) [not null, note: "Django password hash"]
   last_login timestamptz
   is_superuser boolean [not null, default: false]
@@ -15,6 +16,175 @@ Table users {
   is_active boolean [not null, default: true]
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
+}
 
-  Note: "The national ID number is intentionally excluded and will belong to a future onboarding model."
+Table departements {
+  id uuid [pk, not null]
+  nom varchar(150) [not null]
+  description text [not null, default: ""]
+  est_actif boolean [not null, default: true]
+  cree_le timestamptz [not null]
+  modifie_le timestamptz [not null]
+
+  Note: "Legacy organization table scheduled for an English data-preserving migration."
+}
+
+Table postes {
+  id uuid [pk, not null]
+  departement_id uuid [not null, ref: > departements.id]
+  nom varchar(150) [not null]
+  description text [not null, default: ""]
+  est_actif boolean [not null, default: true]
+  cree_le timestamptz [not null]
+  modifie_le timestamptz [not null]
+
+  Note: "Legacy organization table scheduled for an English data-preserving migration."
+}
+
+Table adhesions {
+  id uuid [pk, not null]
+  utilisateur_id uuid [not null, unique, ref: > users.id]
+  etat varchar(32) [not null, default: "en_attente_integration"]
+  acceptee_le timestamptz [not null]
+  cree_le timestamptz [not null]
+  modifie_le timestamptz [not null]
+
+  Note: "Legacy membership table scheduled for an English data-preserving migration."
+}
+
+Table integrations_membres {
+  id uuid [pk, not null]
+  adhesion_id uuid [not null, unique, ref: > adhesions.id]
+  etat varchar(16) [not null, default: "a_faire"]
+  commencee_le timestamptz
+  terminee_le timestamptz
+  cree_le timestamptz [not null]
+  modifie_le timestamptz [not null]
+
+  Note: "Legacy onboarding table scheduled for an English data-preserving migration."
+}
+
+Table affectations_membres {
+  id uuid [pk, not null]
+  adhesion_id uuid [not null, ref: > adhesions.id]
+  departement_id uuid [not null, ref: > departements.id]
+  poste_id uuid [not null, ref: > postes.id]
+  attribuee_par_id uuid [not null, ref: > users.id]
+  date_debut timestamptz [not null]
+  date_fin timestamptz
+  motif_fin text [not null, default: ""]
+  cree_le timestamptz [not null]
+  modifie_le timestamptz [not null]
+
+  Note: "A partial unique index permits only one open assignment per membership. This legacy table is scheduled for an English migration."
+}
+
+Table invitations_adhesion {
+  id uuid [pk, not null]
+  adhesion_id uuid [not null, ref: > adhesions.id]
+  utilisateur_id uuid [not null, ref: > users.id]
+  creee_par_id uuid [not null, ref: > users.id]
+  empreinte_jeton varchar(64) [not null, unique]
+  etat varchar(16) [not null, default: "active"]
+  expire_le timestamptz [not null]
+  utilisee_le timestamptz
+  annulee_le timestamptz
+  creee_le timestamptz [not null]
+  modifiee_le timestamptz [not null]
+
+  Note: "Only the one-time token hash is stored. This legacy table is scheduled for an English migration."
+}
+
+Table events {
+  id uuid [pk, not null]
+  title varchar(200) [not null]
+  summary text [not null, default: ""]
+  description text [not null]
+  location varchar(255) [not null]
+  starts_at timestamptz [not null]
+  ends_at timestamptz [not null]
+  registration_opens_at timestamptz
+  registration_closes_at timestamptz
+  publication_status varchar(16) [not null, default: "draft"]
+  requires_qr_code boolean [not null, default: false]
+  created_by_id uuid [not null, ref: > users.id]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table event_questions {
+  id uuid [pk, not null]
+  event_id uuid [not null, ref: > events.id]
+  label varchar(300) [not null]
+  question_type varchar(32) [not null]
+  is_required boolean [not null, default: false]
+  display_order integer [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "Display order is unique within an event."
+}
+
+Table event_question_options {
+  id uuid [pk, not null]
+  question_id uuid [not null, ref: > event_questions.id]
+  label varchar(200) [not null]
+  display_order integer [not null]
+
+  Note: "Display order is unique within a question."
+}
+
+Table event_registrations {
+  id uuid [pk, not null]
+  event_id uuid [not null, ref: > events.id]
+  email varchar(254) [not null]
+  status varchar(16) [not null, default: "registered"]
+  registered_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "A case-insensitive unique constraint prevents the same email from registering twice for one event."
+}
+
+Table event_answers {
+  id uuid [pk, not null]
+  registration_id uuid [not null, ref: > event_registrations.id]
+  question_id uuid [not null, ref: > event_questions.id]
+  value jsonb [not null]
+  created_at timestamptz [not null]
+
+  Note: "A registration can contain only one answer per question."
+}
+
+Table event_tickets {
+  id uuid [pk, not null]
+  registration_id uuid [not null, unique, ref: > event_registrations.id]
+  qr_code_hash varchar(64) [not null, unique]
+  delivery_status varchar(16) [not null, default: "pending"]
+  sent_at timestamptz
+  delivery_error text [not null, default: ""]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "Only the QR token hash is stored."
+}
+
+Table event_scanners {
+  id uuid [pk, not null]
+  event_id uuid [not null, ref: > events.id]
+  membership_id uuid [not null, ref: > adhesions.id]
+  assigned_by_id uuid [not null, ref: > users.id]
+  is_active boolean [not null, default: true]
+  assigned_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "A membership has at most one scanner assignment per event."
+}
+
+Table event_check_ins {
+  id uuid [pk, not null]
+  ticket_id uuid [not null, unique, ref: > event_tickets.id]
+  checked_in_by_id uuid [not null, ref: > users.id]
+  checked_in_at timestamptz [not null]
+
+  Note: "A ticket can produce only one effective check-in."
 }
