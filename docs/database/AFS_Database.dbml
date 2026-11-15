@@ -538,6 +538,12 @@ Table recruitment_applications {
   opportunity_id uuid [not null, ref: > recruitment_opportunities.id]
   applicant_id uuid [not null, ref: > users.id]
   status varchar(24) [not null, default: "submitted"]
+  offer_by_id uuid [ref: > users.id]
+  offered_at timestamptz
+  offer_responded_at timestamptz
+  offer_email_status varchar(16) [not null, default: "not_required"]
+  offer_email_sent_at timestamptz
+  offer_email_error text [not null, default: ""]
   decision_by_id uuid [ref: > users.id]
   decided_at timestamptz
   decision_email_status varchar(16) [not null, default: "not_required"]

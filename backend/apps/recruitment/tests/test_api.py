@@ -23,6 +23,7 @@ from apps.organization.models import Department, Position
 from ..models import (
     ApplicationStatus,
     DecisionEmailStatus,
+    OfferResponse,
     OpportunityStatus,
     RecruitmentApplication,
     RecruitmentForm,
@@ -152,6 +153,25 @@ class RecruitmentApiTests(APITestCase):
             ),
             self.application_payload(),
             format="multipart",
+        )
+
+    def send_offer(self, application_id):
+        self.client.force_authenticate(self.hr_manager)
+        return self.client.patch(
+            f"/api/v1/recruitment/applications/{application_id}/status/",
+            {"status": ApplicationStatus.OFFER_PENDING},
+            format="json",
+        )
+
+    def respond_to_offer(self, application_id, response, user=None):
+        self.client.force_authenticate(user or self.candidate)
+        return self.client.post(
+            (
+                f"/api/v1/recruitment/applications/{application_id}/"
+                "offer-response/"
+            ),
+            {"response": response},
+            format="json",
         )
 
     def test_hr_manager_creates_department_position_form_with_questions(self):
@@ -379,28 +399,119 @@ class RecruitmentApiTests(APITestCase):
         self.assertEqual(response.data["decision_email_status"], "not_required")
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_acceptance_creates_pending_membership_and_sends_email(self):
+    def test_offer_does_not_create_membership_until_candidate_accepts(self):
         creation = self.submit_application()
-        self.client.force_authenticate(self.hr_manager)
 
-        response = self.client.patch(
-            (
-                f"/api/v1/recruitment/applications/"
-                f"{creation.data['id']}/status/"
-            ),
-            {"status": ApplicationStatus.ACCEPTED},
-            format="json",
+        offer_response = self.send_offer(creation.data["id"])
+
+        self.assertEqual(offer_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            offer_response.data["status"],
+            ApplicationStatus.OFFER_PENDING,
+        )
+        self.assertEqual(
+            offer_response.data["offer_email_status"],
+            DecisionEmailStatus.SENT,
+        )
+        self.assertFalse(Membership.objects.filter(user=self.candidate).exists())
+        self.assertEqual(len(mail.outbox), 1)
+
+        acceptance_response = self.respond_to_offer(
+            creation.data["id"],
+            OfferResponse.ACCEPT,
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(acceptance_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            acceptance_response.data["status"],
+            ApplicationStatus.ACCEPTED,
+        )
         membership = Membership.objects.get(user=self.candidate)
         self.assertEqual(membership.status, MembershipStatus.PENDING_ONBOARDING)
         self.assertEqual(
             membership.assignments.get(ends_at__isnull=True).department,
             self.department,
         )
-        self.assertEqual(response.data["decision_email_status"], DecisionEmailStatus.SENT)
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_candidate_declines_offer_without_closing_other_applications(self):
+        creation = self.submit_application()
+        other_opportunity = RecruitmentOpportunity.objects.create(
+            form=self.form,
+            title="Alternative engineering opportunity",
+            slug="alternative-engineering-opportunity",
+            summary="An alternative opportunity.",
+            description_markdown="## Alternative role",
+            status=OpportunityStatus.PUBLISHED,
+            created_by=self.hr_manager,
+        )
+        other_application = RecruitmentApplication.objects.create(
+            opportunity=other_opportunity,
+            applicant=self.candidate,
+            status=ApplicationStatus.UNDER_REVIEW,
+        )
+        self.send_offer(creation.data["id"])
+
+        response = self.respond_to_offer(
+            creation.data["id"],
+            OfferResponse.DECLINE,
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["status"],
+            ApplicationStatus.DECLINED_BY_CANDIDATE,
+        )
+        self.assertFalse(Membership.objects.filter(user=self.candidate).exists())
+        other_application.refresh_from_db()
+        self.assertEqual(
+            other_application.status,
+            ApplicationStatus.UNDER_REVIEW,
+        )
         self.assertEqual(len(mail.outbox), 1)
+
+    def test_acceptance_withdraws_candidates_other_open_applications(self):
+        creation = self.submit_application()
+        other_opportunity = RecruitmentOpportunity.objects.create(
+            form=self.form,
+            title="Second engineering opportunity",
+            slug="second-engineering-opportunity",
+            summary="Another opportunity.",
+            description_markdown="## Second role",
+            status=OpportunityStatus.PUBLISHED,
+            created_by=self.hr_manager,
+        )
+        other_application = RecruitmentApplication.objects.create(
+            opportunity=other_opportunity,
+            applicant=self.candidate,
+            status=ApplicationStatus.INTERVIEW,
+        )
+        self.send_offer(creation.data["id"])
+
+        response = self.respond_to_offer(
+            creation.data["id"],
+            OfferResponse.ACCEPT,
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        other_application.refresh_from_db()
+        self.assertEqual(other_application.status, ApplicationStatus.WITHDRAWN)
+        self.assertEqual(other_application.decision_by, self.candidate)
+        self.assertIsNotNone(other_application.decided_at)
+
+    def test_another_account_cannot_respond_to_candidates_offer(self):
+        creation = self.submit_application()
+        self.send_offer(creation.data["id"])
+
+        response = self.respond_to_offer(
+            creation.data["id"],
+            OfferResponse.ACCEPT,
+            user=self.other_user,
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        application = RecruitmentApplication.objects.get(pk=creation.data["id"])
+        self.assertEqual(application.status, ApplicationStatus.OFFER_PENDING)
 
     def test_rejection_sends_email_without_creating_membership(self):
         creation = self.submit_application()
@@ -442,6 +553,28 @@ class RecruitmentApiTests(APITestCase):
         self.assertEqual(application.status, ApplicationStatus.REJECTED)
         self.assertEqual(application.decision_email_status, DecisionEmailStatus.FAILED)
 
+    def test_offer_email_failure_does_not_cancel_outstanding_offer(self):
+        creation = self.submit_application()
+        self.client.force_authenticate(self.hr_manager)
+
+        with patch(
+            "apps.recruitment.operations.EmailMessage.send",
+            side_effect=RuntimeError("Email provider unavailable"),
+        ):
+            response = self.client.patch(
+                (
+                    f"/api/v1/recruitment/applications/"
+                    f"{creation.data['id']}/status/"
+                ),
+                {"status": ApplicationStatus.OFFER_PENDING},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        application = RecruitmentApplication.objects.get(pk=creation.data["id"])
+        self.assertEqual(application.status, ApplicationStatus.OFFER_PENDING)
+        self.assertEqual(application.offer_email_status, DecisionEmailStatus.FAILED)
+
     def test_final_decision_cannot_change(self):
         creation = self.submit_application()
         status_url = (
@@ -456,7 +589,7 @@ class RecruitmentApiTests(APITestCase):
 
         response = self.client.patch(
             status_url,
-            {"status": ApplicationStatus.ACCEPTED},
+            {"status": ApplicationStatus.INTERVIEW},
             format="json",
         )
 
@@ -475,15 +608,11 @@ class RecruitmentApiTests(APITestCase):
             completed_at=timezone.now(),
         )
         creation = self.submit_application()
-        self.client.force_authenticate(self.hr_manager)
+        self.send_offer(creation.data["id"])
 
-        response = self.client.patch(
-            (
-                f"/api/v1/recruitment/applications/"
-                f"{creation.data['id']}/status/"
-            ),
-            {"status": ApplicationStatus.ACCEPTED},
-            format="json",
+        response = self.respond_to_offer(
+            creation.data["id"],
+            OfferResponse.ACCEPT,
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -493,7 +622,7 @@ class RecruitmentApiTests(APITestCase):
         self.assertEqual(onboarding.status, OnboardingStatus.COMPLETED)
         self.assertEqual(membership.assignments.filter(ends_at__isnull=True).count(), 1)
 
-    def test_current_member_requires_explicit_transfer_instead_of_acceptance(self):
+    def test_current_member_accepts_offer_but_requires_explicit_transfer(self):
         membership = Membership.objects.create(
             user=self.candidate,
             status=MembershipStatus.ACTIVE,
@@ -504,12 +633,52 @@ class RecruitmentApiTests(APITestCase):
             started_at=timezone.now(),
             completed_at=timezone.now(),
         )
-        MemberAssignment.objects.create(
+        current_assignment = MemberAssignment.objects.create(
             membership=membership,
             department=self.department,
             position=self.position,
             assigned_by=self.hr_manager,
         )
+        other_department = Department.objects.create(name="Product")
+        other_position = Position.objects.create(
+            department=other_department,
+            name="Product coordinator",
+        )
+        other_form = RecruitmentForm.objects.create(
+            department=other_department,
+            position=other_position,
+            name="Product application",
+            status=RecruitmentFormStatus.ACTIVE,
+            created_by=self.hr_manager,
+        )
+        other_opportunity = RecruitmentOpportunity.objects.create(
+            form=other_form,
+            title="Product recruitment",
+            slug="product-recruitment",
+            summary="Join product.",
+            description_markdown="## Product",
+            status=OpportunityStatus.PUBLISHED,
+            created_by=self.hr_manager,
+        )
+        application = RecruitmentApplication.objects.create(
+            opportunity=other_opportunity,
+            applicant=self.candidate,
+        )
+        self.send_offer(application.id)
+
+        response = self.respond_to_offer(application.id, OfferResponse.ACCEPT)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], ApplicationStatus.ACCEPTED)
+        self.assertTrue(response.data["requires_department_transfer"])
+        membership.refresh_from_db()
+        self.assertEqual(membership.status, MembershipStatus.ACTIVE)
+        self.assertEqual(
+            membership.assignments.get(ends_at__isnull=True).id,
+            current_assignment.id,
+        )
+
+    def test_hr_cannot_directly_mark_application_as_accepted(self):
         creation = self.submit_application()
         self.client.force_authenticate(self.hr_manager)
 
@@ -523,8 +692,7 @@ class RecruitmentApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        application = RecruitmentApplication.objects.get(pk=creation.data["id"])
-        self.assertEqual(application.status, ApplicationStatus.SUBMITTED)
+        self.assertFalse(Membership.objects.filter(user=self.candidate).exists())
 
     def test_schema_documents_recruitment_routes(self):
         response = self.client.get(
@@ -540,5 +708,9 @@ class RecruitmentApiTests(APITestCase):
         )
         self.assertIn(
             "/api/v1/recruitment/applications/{application_id}/status/",
+            response.data["paths"],
+        )
+        self.assertIn(
+            "/api/v1/recruitment/applications/{application_id}/offer-response/",
             response.data["paths"],
         )

@@ -22,6 +22,7 @@ from .models import (
     ApplicationCv,
     ApplicationStatus,
     DecisionEmailStatus,
+    OfferResponse,
     RecruitmentAnswer,
     RecruitmentApplication,
     RecruitmentOpportunity,
@@ -31,6 +32,15 @@ from .models import (
 
 FINAL_APPLICATION_STATUSES = {
     ApplicationStatus.ACCEPTED,
+    ApplicationStatus.REJECTED,
+    ApplicationStatus.DECLINED_BY_CANDIDATE,
+    ApplicationStatus.WITHDRAWN,
+}
+HR_MANAGED_APPLICATION_STATUSES = {
+    ApplicationStatus.UNDER_REVIEW,
+    ApplicationStatus.CONTACTED,
+    ApplicationStatus.INTERVIEW,
+    ApplicationStatus.OFFER_PENDING,
     ApplicationStatus.REJECTED,
 }
 MAX_CV_SIZE = 10 * 1024 * 1024
@@ -225,7 +235,7 @@ def change_application_status(
         )
 
     locked_application = (
-        RecruitmentApplication.objects.select_for_update()
+        RecruitmentApplication.objects.select_for_update(of=("self",))
         .select_related(
             "applicant",
             "opportunity__form__department",
@@ -240,48 +250,31 @@ def change_application_status(
     if new_status == locked_application.status:
         return locked_application
 
-    previous_status = locked_application.status
-    affected_membership = None
-
-    if new_status in FINAL_APPLICATION_STATUSES:
-        locked_applicant = User.objects.select_for_update().get(
-            pk=locked_application.applicant_id
+    if new_status not in HR_MANAGED_APPLICATION_STATUSES:
+        raise ValidationError(
+            {
+                "status": (
+                    "HR can move an application through review, send an offer, "
+                    "or reject it. Only the candidate can accept or decline an "
+                    "offer."
+                )
+            }
         )
-        if new_status == ApplicationStatus.ACCEPTED:
-            membership = (
-                Membership.objects.select_for_update()
-                .filter(user=locked_applicant)
-                .first()
-            )
-            form = locked_application.opportunity.form
-            if membership is None:
-                affected_membership = create_initial_membership(
-                    user=locked_applicant,
-                    department=form.department,
-                    position=form.position,
-                    assigned_by=changed_by,
-                    source_application=locked_application,
-                )
-            elif membership.status == MembershipStatus.INACTIVE:
-                affected_membership = reactivate_membership_after_acceptance(
-                    membership=membership,
-                    department=form.department,
-                    position=form.position,
-                    assigned_by=changed_by,
-                    source_application=locked_application,
-                )
-            else:
-                raise ValidationError(
-                    {
-                        "status": (
-                            "This applicant already has a pending or active "
-                            "membership. Use the explicit transfer workflow."
-                        )
-                    }
-                )
+    if locked_application.status == ApplicationStatus.OFFER_PENDING:
+        raise ValidationError(
+            {"status": "The candidate must respond to the outstanding offer."}
+        )
 
+    previous_status = locked_application.status
+    now = timezone.now()
+    if new_status == ApplicationStatus.OFFER_PENDING:
+        locked_application.offer_by = changed_by
+        locked_application.offered_at = now
+        locked_application.offer_email_status = DecisionEmailStatus.PENDING
+        locked_application.offer_email_error = ""
+    elif new_status == ApplicationStatus.REJECTED:
         locked_application.decision_by = changed_by
-        locked_application.decided_at = timezone.now()
+        locked_application.decided_at = now
         locked_application.decision_email_status = DecisionEmailStatus.PENDING
         locked_application.decision_email_error = ""
 
@@ -289,6 +282,10 @@ def change_application_status(
     locked_application.save(
         update_fields=(
             "status",
+            "offer_by",
+            "offered_at",
+            "offer_email_status",
+            "offer_email_error",
             "decision_by",
             "decided_at",
             "decision_email_status",
@@ -301,43 +298,217 @@ def change_application_status(
         action=AuditAction.APPLICATION_STATUS_CHANGED,
         actor=changed_by,
         application=locked_application,
-        membership=affected_membership,
         previous_state={"application_status": previous_status},
         new_state={"application_status": locked_application.status},
     )
     return locked_application
 
 
-def send_application_decision_email(application: RecruitmentApplication) -> None:
-    if (
-        application.status not in FINAL_APPLICATION_STATUSES
-        or application.decision_email_status != DecisionEmailStatus.PENDING
-    ):
-        return
-
-    accepted = application.status == ApplicationStatus.ACCEPTED
-    subject = (
-        "Your application was accepted"
-        if accepted
-        else "Update on your application"
-    )
-    body = (
-        (
-            f"Your application for {application.opportunity.title} was accepted.\n\n"
-            + (
-                "Your membership has been reactivated. Log in to your account "
-                "to view your current department and position."
-                if application.applicant.membership.status
-                == MembershipStatus.ACTIVE
-                else "Log in to your account to continue membership onboarding."
-            )
+@transaction.atomic
+def respond_to_application_offer(
+    *,
+    application: RecruitmentApplication,
+    response: str,
+    responded_by,
+) -> RecruitmentApplication:
+    if application.applicant_id != responded_by.id:
+        raise ValidationError(
+            {"permission": "Only the applicant can respond to this offer."}
         )
-        if accepted
-        else (
+    locked_applicant = User.objects.select_for_update().get(pk=responded_by.pk)
+    locked_application = (
+        RecruitmentApplication.objects.select_for_update(of=("self",))
+        .select_related(
+            "applicant",
+            "offer_by",
+            "opportunity__form__department",
+            "opportunity__form__position",
+        )
+        .get(pk=application.pk)
+    )
+    if locked_application.applicant_id != locked_applicant.id:
+        raise ValidationError(
+            {"permission": "Only the applicant can respond to this offer."}
+        )
+    if locked_application.status != ApplicationStatus.OFFER_PENDING:
+        raise ValidationError(
+            {"status": "This application does not have an outstanding offer."}
+        )
+    if response not in OfferResponse.values:
+        raise ValidationError({"response": "The offer response is invalid."})
+    if not locked_application.offer_by_id:
+        raise ValidationError(
+            {"offer": "The application offer has no authorized HR actor."}
+        )
+
+    now = timezone.now()
+    previous_status = locked_application.status
+    affected_membership = None
+
+    if response == OfferResponse.ACCEPT:
+        affected_membership = (
+            Membership.objects.select_for_update()
+            .filter(user=locked_applicant)
+            .first()
+        )
+        form = locked_application.opportunity.form
+        if affected_membership is None:
+            affected_membership = create_initial_membership(
+                user=locked_applicant,
+                department=form.department,
+                position=form.position,
+                assigned_by=locked_application.offer_by,
+                source_application=locked_application,
+            )
+        elif affected_membership.status == MembershipStatus.INACTIVE:
+            affected_membership = reactivate_membership_after_acceptance(
+                membership=affected_membership,
+                department=form.department,
+                position=form.position,
+                assigned_by=locked_application.offer_by,
+                source_application=locked_application,
+            )
+
+        locked_application.status = ApplicationStatus.ACCEPTED
+        locked_application.decision_email_status = DecisionEmailStatus.PENDING
+        locked_application.decision_email_error = ""
+    else:
+        locked_application.status = ApplicationStatus.DECLINED_BY_CANDIDATE
+        locked_application.decision_email_status = (
+            DecisionEmailStatus.NOT_REQUIRED
+        )
+        locked_application.decision_email_error = ""
+
+    locked_application.offer_responded_at = now
+    locked_application.decision_by = responded_by
+    locked_application.decided_at = now
+    locked_application.save(
+        update_fields=(
+            "status",
+            "offer_responded_at",
+            "decision_by",
+            "decided_at",
+            "decision_email_status",
+            "decision_email_error",
+            "updated_at",
+        )
+    )
+    record_audit_event(
+        domain=AuditDomain.RECRUITMENT,
+        action=AuditAction.APPLICATION_STATUS_CHANGED,
+        actor=responded_by,
+        application=locked_application,
+        membership=affected_membership,
+        previous_state={"application_status": previous_status},
+        new_state={"application_status": locked_application.status},
+    )
+
+    if response == OfferResponse.ACCEPT:
+        other_applications = (
+            RecruitmentApplication.objects.select_for_update()
+            .filter(applicant_id=locked_application.applicant_id)
+            .exclude(pk=locked_application.pk)
+            .exclude(status__in=FINAL_APPLICATION_STATUSES)
+        )
+        for other_application in other_applications:
+            other_previous_status = other_application.status
+            other_application.status = ApplicationStatus.WITHDRAWN
+            other_application.decision_by = responded_by
+            other_application.decided_at = now
+            other_application.decision_email_status = (
+                DecisionEmailStatus.NOT_REQUIRED
+            )
+            other_application.decision_email_error = ""
+            other_application.save(
+                update_fields=(
+                    "status",
+                    "decision_by",
+                    "decided_at",
+                    "decision_email_status",
+                    "decision_email_error",
+                    "updated_at",
+                )
+            )
+            record_audit_event(
+                domain=AuditDomain.RECRUITMENT,
+                action=AuditAction.APPLICATION_STATUS_CHANGED,
+                actor=responded_by,
+                application=other_application,
+                membership=affected_membership,
+                previous_state={
+                    "application_status": other_previous_status
+                },
+                new_state={
+                    "application_status": ApplicationStatus.WITHDRAWN
+                },
+            )
+
+    return locked_application
+
+
+def _accepted_email_body(application: RecruitmentApplication) -> str:
+    membership = application.applicant.membership
+    form = application.opportunity.form
+    current_assignment = membership.assignments.filter(
+        ends_at__isnull=True
+    ).first()
+    requires_transfer = bool(
+        current_assignment
+        and (
+            current_assignment.department_id != form.department_id
+            or current_assignment.position_id != form.position_id
+        )
+    )
+    if requires_transfer:
+        next_step = (
+            "Your response was recorded. HR will complete the explicit department "
+            "transfer before the new assignment becomes active."
+        )
+    elif membership.status == MembershipStatus.ACTIVE:
+        next_step = (
+            "Your membership is active. Log in to view your current department "
+            "and position."
+        )
+    else:
+        next_step = "Log in to your account to continue membership onboarding."
+    return (
+        f"You accepted the offer for {application.opportunity.title}.\n\n"
+        f"{next_step}"
+    )
+
+
+def send_application_status_email(application: RecruitmentApplication) -> None:
+    if (
+        application.status == ApplicationStatus.OFFER_PENDING
+        and application.offer_email_status == DecisionEmailStatus.PENDING
+    ):
+        email_kind = "offer"
+        subject = f"Offer for {application.opportunity.title}"
+        body = (
+            f"You received an offer for {application.opportunity.title}.\n\n"
+            "Log in to your account to accept or decline the offer. No membership "
+            "will be created until you accept."
+        )
+    elif (
+        application.status == ApplicationStatus.REJECTED
+        and application.decision_email_status == DecisionEmailStatus.PENDING
+    ):
+        email_kind = "decision"
+        subject = "Update on your application"
+        body = (
             f"Your application for {application.opportunity.title} was not "
             "selected. Thank you for your interest in Ask For Success."
         )
-    )
+    elif (
+        application.status == ApplicationStatus.ACCEPTED
+        and application.decision_email_status == DecisionEmailStatus.PENDING
+    ):
+        email_kind = "decision"
+        subject = "Your offer was accepted"
+        body = _accepted_email_body(application)
+    else:
+        return
+
     try:
         message = EmailMessage(
             subject=subject,
@@ -349,25 +520,49 @@ def send_application_decision_email(application: RecruitmentApplication) -> None
         if sent_count != 1:
             raise RuntimeError("The email service did not confirm delivery.")
     except Exception as error:
-        application.decision_email_status = DecisionEmailStatus.FAILED
-        application.decision_email_error = str(error)[:2000]
+        if email_kind == "offer":
+            application.offer_email_status = DecisionEmailStatus.FAILED
+            application.offer_email_error = str(error)[:2000]
+            application.save(
+                update_fields=(
+                    "offer_email_status",
+                    "offer_email_error",
+                    "updated_at",
+                )
+            )
+        else:
+            application.decision_email_status = DecisionEmailStatus.FAILED
+            application.decision_email_error = str(error)[:2000]
+            application.save(
+                update_fields=(
+                    "decision_email_status",
+                    "decision_email_error",
+                    "updated_at",
+                )
+            )
+        return
+
+    if email_kind == "offer":
+        application.offer_email_status = DecisionEmailStatus.SENT
+        application.offer_email_sent_at = timezone.now()
+        application.offer_email_error = ""
+        application.save(
+            update_fields=(
+                "offer_email_status",
+                "offer_email_sent_at",
+                "offer_email_error",
+                "updated_at",
+            )
+        )
+    else:
+        application.decision_email_status = DecisionEmailStatus.SENT
+        application.decision_email_sent_at = timezone.now()
+        application.decision_email_error = ""
         application.save(
             update_fields=(
                 "decision_email_status",
+                "decision_email_sent_at",
                 "decision_email_error",
                 "updated_at",
             )
         )
-        return
-
-    application.decision_email_status = DecisionEmailStatus.SENT
-    application.decision_email_sent_at = timezone.now()
-    application.decision_email_error = ""
-    application.save(
-        update_fields=(
-            "decision_email_status",
-            "decision_email_sent_at",
-            "decision_email_error",
-            "updated_at",
-        )
-    )

@@ -111,14 +111,17 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Require one PDF CV with a 10 MB limit and signature validation.
 - [x] Keep CVs in private storage behind applicant-or-HR API authorization.
 - [x] Add the HR application dashboard, filtering, detail, answers, and CV access.
-- [x] Add submitted, under-review, contacted, interview, accepted, and rejected states.
-- [x] Send email only for accepted and rejected final decisions.
+- [x] Add submitted, under-review, contacted, interview, offer-pending, accepted, rejected, candidate-declined, and withdrawn states.
+- [x] Add an HR-authored offer transition without creating membership.
+- [x] Add the authenticated candidate offer accept-or-decline endpoint.
+- [x] Send offer, rejection, and acceptance/onboarding emails at their corresponding transitions.
 - [x] Preserve final decisions if email delivery fails.
-- [x] Create pending membership and assignment after first acceptance.
+- [x] Create pending membership and assignment only after candidate acceptance.
 - [x] Reactivate a former member without repeating completed onboarding.
-- [x] Require explicit transfer for a candidate with pending or active membership.
+- [x] Require explicit transfer after a pending or active member accepts a different assignment.
+- [x] Automatically withdraw and audit the candidate's other non-final applications after acceptance.
+- [x] Leave other applications open when the candidate declines an offer.
 - [x] Add migrations, automated tests, Swagger, and frontend documentation.
-- [ ] Decide how one acceptance affects the candidate's other pending applications.
 - [ ] Confirm the recruitment contract with the frontend team.
 - [ ] Deferred: configure and validate Amazon SES in the final infrastructure phase.
 
@@ -188,12 +191,12 @@ Do not install SeaweedFS or change the local development storage during the curr
 
 ## Next engineering task
 
-The next product decision required for recruitment is how one acceptance affects the candidate's other pending applications. The current implementation leaves them open. After that decision, the backend can implement the approved cross-application transition and audit it atomically.
+Validate the candidate-confirmed recruitment offer contract with the frontend team in Swagger: HR sends the offer, the authenticated candidate accepts or declines it, and the frontend handles `requires_department_transfer` for existing members.
 
 ## Next implementation
 
 1. Confirm recruitment, membership, news, gallery, and organization contracts with the frontend team through Swagger and Postman.
-2. Decide how acceptance affects the candidate's other pending applications. The current implementation leaves them unchanged.
+2. Decide whether rejected candidates can reapply to the same opportunity or require a new campaign.
 3. Decide whether donation-intent records belong in V1 before adding donation forms.
 4. Add national ID onboarding only after its administrator scope and audit contract are approved.
 5. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.

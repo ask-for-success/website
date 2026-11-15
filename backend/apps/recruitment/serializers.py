@@ -1,4 +1,7 @@
-from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.exceptions import (
+    ObjectDoesNotExist,
+    ValidationError as DjangoValidationError,
+)
 from django.db import transaction
 from django.urls import reverse
 from drf_spectacular.utils import extend_schema_field
@@ -10,6 +13,7 @@ from apps.organization.models import Department, Position
 from .models import (
     ApplicationCv,
     ApplicationStatus,
+    OfferResponse,
     RecruitmentAnswer,
     RecruitmentApplication,
     RecruitmentForm,
@@ -22,6 +26,7 @@ from .models import (
 from .operations import (
     change_application_status,
     create_recruitment_application,
+    respond_to_application_offer,
     validate_cv_file,
 )
 
@@ -465,9 +470,34 @@ class DecisionActorSerializer(serializers.ModelSerializer):
         fields = ("id", "email", "first_name", "last_name")
 
 
+def application_requires_department_transfer(instance) -> bool:
+    if instance.status != ApplicationStatus.ACCEPTED:
+        return False
+    try:
+        membership = instance.applicant.membership
+    except ObjectDoesNotExist:
+        return False
+    assignment = next(
+        (
+            item
+            for item in membership.assignments.all()
+            if item.ends_at is None
+        ),
+        None,
+    )
+    if assignment is None:
+        return False
+    form = instance.opportunity.form
+    return bool(
+        assignment.department_id != form.department_id
+        or assignment.position_id != form.position_id
+    )
+
+
 class RecruitmentApplicationListSerializer(serializers.ModelSerializer):
     applicant = ApplicantReferenceSerializer(read_only=True)
     opportunity = OpportunityReferenceSerializer(read_only=True)
+    requires_department_transfer = serializers.SerializerMethodField()
 
     class Meta:
         model = RecruitmentApplication
@@ -476,11 +506,19 @@ class RecruitmentApplicationListSerializer(serializers.ModelSerializer):
             "applicant",
             "opportunity",
             "status",
+            "offered_at",
+            "offer_responded_at",
+            "offer_email_status",
             "submitted_at",
             "decided_at",
             "decision_email_status",
+            "requires_department_transfer",
             "updated_at",
         )
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_requires_department_transfer(self, instance) -> bool:
+        return application_requires_department_transfer(instance)
 
 
 class RecruitmentApplicationDetailSerializer(
@@ -489,11 +527,15 @@ class RecruitmentApplicationDetailSerializer(
     answers = RecruitmentAnswerOutputSerializer(many=True, read_only=True)
     cv = ApplicationCvSerializer(read_only=True)
     decision_by = DecisionActorSerializer(read_only=True)
+    offer_by = DecisionActorSerializer(read_only=True)
 
     class Meta(RecruitmentApplicationListSerializer.Meta):
         fields = RecruitmentApplicationListSerializer.Meta.fields + (
             "answers",
             "cv",
+            "offer_by",
+            "offer_email_sent_at",
+            "offer_email_error",
             "decision_by",
             "decision_email_sent_at",
             "decision_email_error",
@@ -503,6 +545,8 @@ class RecruitmentApplicationDetailSerializer(
 class CandidateApplicationSerializer(serializers.ModelSerializer):
     opportunity = OpportunityReferenceSerializer(read_only=True)
     cv = ApplicationCvSerializer(read_only=True)
+    can_respond_to_offer = serializers.SerializerMethodField()
+    requires_department_transfer = serializers.SerializerMethodField()
 
     class Meta:
         model = RecruitmentApplication
@@ -510,22 +554,35 @@ class CandidateApplicationSerializer(serializers.ModelSerializer):
             "id",
             "opportunity",
             "status",
+            "offered_at",
+            "offer_responded_at",
+            "can_respond_to_offer",
+            "requires_department_transfer",
             "submitted_at",
             "decided_at",
             "cv",
             "updated_at",
         )
 
+    @extend_schema_field(serializers.BooleanField())
+    def get_can_respond_to_offer(self, instance) -> bool:
+        return instance.status == ApplicationStatus.OFFER_PENDING
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_requires_department_transfer(self, instance) -> bool:
+        return application_requires_department_transfer(instance)
+
 
 class ApplicationStatusUpdateSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=ApplicationStatus.choices)
-
-    def validate_status(self, value):
-        if value == ApplicationStatus.SUBMITTED:
-            raise serializers.ValidationError(
-                "An application cannot return to submitted."
-            )
-        return value
+    status = serializers.ChoiceField(
+        choices=(
+            ApplicationStatus.UNDER_REVIEW,
+            ApplicationStatus.CONTACTED,
+            ApplicationStatus.INTERVIEW,
+            ApplicationStatus.OFFER_PENDING,
+            ApplicationStatus.REJECTED,
+        )
+    )
 
     def create(self, validated_data):
         try:
@@ -533,6 +590,22 @@ class ApplicationStatusUpdateSerializer(serializers.Serializer):
                 application=self.context["application"],
                 new_status=validated_data["status"],
                 changed_by=self.context["request"].user,
+            )
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(
+                convert_validation_error(error)
+            ) from error
+
+
+class ApplicationOfferResponseSerializer(serializers.Serializer):
+    response = serializers.ChoiceField(choices=OfferResponse.choices)
+
+    def create(self, validated_data):
+        try:
+            return respond_to_application_offer(
+                application=self.context["application"],
+                response=validated_data["response"],
+                responded_by=self.context["request"].user,
             )
         except DjangoValidationError as error:
             raise serializers.ValidationError(

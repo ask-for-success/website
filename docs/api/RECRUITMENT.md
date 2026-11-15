@@ -9,10 +9,12 @@ Swagger is the executable field-level contract: [http://localhost:8000/api/docs/
 3. The manager creates and publishes a recruitment opportunity that uses the form.
 4. An authenticated candidate submits the form once with one private PDF CV.
 5. HR reviews the candidate row, answers, and protected CV.
-6. HR moves the application through intermediate statuses.
-7. `accepted` or `rejected` records the final actor and time and sends the decision email.
+6. HR moves the application through review statuses, rejects it, or sends an offer.
+7. Sending an offer changes the application to `offer_pending`, records the HR actor and time, and emails the candidate. It does not create membership.
+8. The candidate accepts or declines the outstanding offer from their authenticated account.
+9. Acceptance records `accepted`, creates or reactivates membership when required, and automatically withdraws the candidate's other non-final applications. Declining records `declined_by_candidate`, creates no membership, and leaves the other applications open.
 
-Each application has its own lifecycle. Multiple applications to different opportunities are allowed. What happens to other pending applications after one acceptance remains an open product question.
+Multiple applications to different opportunities are allowed until an offer is accepted. Every automatic withdrawal is audited independently.
 
 ## Permissions
 
@@ -39,7 +41,8 @@ A general content manager without the HR permission cannot access recruitment re
 | `GET /api/v1/recruitment/applications/me/` | List the authenticated candidate's applications. |
 | `GET /api/v1/recruitment/applications/` | HR candidate dashboard. |
 | `GET /api/v1/recruitment/applications/{application_id}/` | HR detail with answers and CV reference. |
-| `PATCH /api/v1/recruitment/applications/{application_id}/status/` | Change workflow status. |
+| `PATCH /api/v1/recruitment/applications/{application_id}/status/` | HR review, offer, and rejection transitions. |
+| `POST /api/v1/recruitment/applications/{application_id}/offer-response/` | The authenticated applicant accepts or declines an outstanding offer. |
 | `GET /api/v1/recruitment/applications/{application_id}/cv/` | Stream the protected PDF CV. |
 
 The HR application list supports `status`, `opportunity_id`, `department_id`, `position_id`, `search`, `page`, and `page_size` query parameters.
@@ -76,11 +79,23 @@ Single-choice values are option UUIDs. Multiple-choice values are lists of optio
 
 ## Status and membership behavior
 
-The lifecycle is `submitted`, `under_review`, `contacted`, `interview`, `accepted`, and `rejected`.
+The lifecycle uses `submitted`, `under_review`, `contacted`, `interview`, `offer_pending`, `accepted`, `rejected`, `declined_by_candidate`, and `withdrawn`.
 
-Intermediate states do not send email. `accepted` and `rejected` are immutable final decisions and each sends one decision email. A mail-provider failure is recorded as `failed` but does not reverse the decision.
+HR can move an application through review, send an offer, or reject it. HR cannot directly set `accepted`, `declined_by_candidate`, or `withdrawn`. Once an offer is outstanding, only its applicant can respond. The response body is:
 
-Acceptance creates a pending membership and the opportunity's department and position assignment for a candidate who has no membership. A former member with completed onboarding is reactivated without repeating onboarding. A current pending or active member cannot be accepted directly; HR must use the explicit department-transfer workflow to preserve the one-department rule.
+```json
+{
+  "response": "accept"
+}
+```
+
+The other allowed value is `decline`. Repeating a response is rejected because the offer is no longer outstanding.
+
+`offer_pending` sends the offer email. `rejected` sends the rejection email. Candidate acceptance sends an acceptance or onboarding confirmation email. Mail-provider failure is recorded as `failed` but never reverses the corresponding business transition.
+
+Acceptance creates pending membership and the opportunity's department and position assignment for a candidate who has no membership. A former member with completed onboarding is reactivated without repeating onboarding. If a pending or active member accepts an offer for a different assignment, the application becomes accepted but `requires_department_transfer` is true and the existing assignment remains unchanged until HR uses the explicit transfer endpoint.
+
+After acceptance, every other application for that candidate that is not already final becomes `withdrawn`. After a candidate decline, the other applications remain unchanged.
 
 ## CV privacy and storage
 

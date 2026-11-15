@@ -37,15 +37,16 @@ V1 must support:
 - an independent lifecycle for each application;
 - simultaneous applications to multiple departments before acceptance;
 - HR notes that are never visible to applicants;
-- the actor and timestamp for every final decision;
+- an HR-authored offer followed by an authenticated candidate acceptance or decline;
+- the actor and timestamp for every offer and final response;
 - recruitment processing by a content manager with `accounts.manage_hr`;
 - protected candidate detail, answer, and CV access for authorized HR users.
 
-The confirmed lifecycle is `submitted`, `under_review`, `contacted`, `interview`, `accepted`, and `rejected`. Only the two final states send a decision email.
+The confirmed lifecycle is `submitted`, `under_review`, `contacted`, `interview`, `offer_pending`, `accepted`, `rejected`, `declined_by_candidate`, and `withdrawn`. HR can send an offer or reject an application but cannot accept an offer for the candidate. Accepting an outstanding offer creates or reactivates membership when needed and withdraws the candidate's other non-final applications. Declining creates no membership and leaves the other applications open.
 
 ## Membership and onboarding
 
-An accepted application creates a membership linked to the applicant's existing account. For a person recruited outside the application forms, a content manager with `accounts.manage_hr` starts an invitation using the person's name and email. The system creates or reuses the account, then sends a secure acceptance/onboarding email.
+An offer accepted by the candidate creates a membership linked to the applicant's existing account. For a person recruited outside the application forms, a content manager with `accounts.manage_hr` starts an invitation using the person's name and email. The system creates or reuses the account, then sends a secure acceptance/onboarding email.
 
 Each active membership contains one department and one position. A person may have only one active placement at a time, while previous placements remain as history. A former member keeps the same account when applying again.
 

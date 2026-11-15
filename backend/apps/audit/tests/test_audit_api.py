@@ -14,13 +14,17 @@ from apps.memberships.operations import (
 from apps.organization.models import Department, Position
 from apps.recruitment.models import (
     ApplicationStatus,
+    OfferResponse,
     OpportunityStatus,
     RecruitmentApplication,
     RecruitmentForm,
     RecruitmentFormStatus,
     RecruitmentOpportunity,
 )
-from apps.recruitment.operations import change_application_status
+from apps.recruitment.operations import (
+    change_application_status,
+    respond_to_application_offer,
+)
 
 from ..models import AuditAction, AuditDomain, AuditRecord
 from ..services import record_audit_event
@@ -190,8 +194,13 @@ class AuditApiTests(APITestCase):
 
         change_application_status(
             application=application,
-            new_status=ApplicationStatus.ACCEPTED,
+            new_status=ApplicationStatus.OFFER_PENDING,
             changed_by=self.hr_manager,
+        )
+        respond_to_application_offer(
+            application=application,
+            response=OfferResponse.ACCEPT,
+            responded_by=self.candidate,
         )
 
         application.refresh_from_db()
@@ -207,6 +216,54 @@ class AuditApiTests(APITestCase):
                 AuditAction.MEMBERSHIP_CREATED,
                 AuditAction.APPLICATION_STATUS_CHANGED,
             },
+        )
+
+    def test_acceptance_audits_each_automatic_application_withdrawal(self):
+        accepted_application = self.create_application()
+        second_form = RecruitmentForm.objects.create(
+            department=self.marketing,
+            position=self.coordinator,
+            name="Second audit recruitment form",
+            status=RecruitmentFormStatus.ACTIVE,
+            created_by=self.hr_manager,
+        )
+        second_opportunity = RecruitmentOpportunity.objects.create(
+            form=second_form,
+            title="Second audit recruitment opportunity",
+            slug="second-audit-recruitment-opportunity",
+            summary="Audit automatic application withdrawal.",
+            description_markdown="## Second audit recruitment",
+            status=OpportunityStatus.PUBLISHED,
+            created_by=self.hr_manager,
+        )
+        withdrawn_application = RecruitmentApplication.objects.create(
+            opportunity=second_opportunity,
+            applicant=self.candidate,
+            status=ApplicationStatus.INTERVIEW,
+        )
+
+        change_application_status(
+            application=accepted_application,
+            new_status=ApplicationStatus.OFFER_PENDING,
+            changed_by=self.hr_manager,
+        )
+        respond_to_application_offer(
+            application=accepted_application,
+            response=OfferResponse.ACCEPT,
+            responded_by=self.candidate,
+        )
+
+        withdrawn_application.refresh_from_db()
+        record = AuditRecord.objects.get(application=withdrawn_application)
+        self.assertEqual(withdrawn_application.status, ApplicationStatus.WITHDRAWN)
+        self.assertEqual(record.actor, self.candidate)
+        self.assertEqual(
+            record.previous_state["application_status"],
+            ApplicationStatus.INTERVIEW,
+        )
+        self.assertEqual(
+            record.new_state["application_status"],
+            ApplicationStatus.WITHDRAWN,
         )
 
     def test_only_account_administrator_can_list_and_filter_records(self):

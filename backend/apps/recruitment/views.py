@@ -17,10 +17,11 @@ from .models import (
     RecruitmentForm,
 )
 from .models import RecruitmentOpportunity
-from .operations import send_application_decision_email
+from .operations import send_application_status_email
 from .pagination import RecruitmentPagination
 from .serializers import (
     ApplicationStatusUpdateSerializer,
+    ApplicationOfferResponseSerializer,
     CandidateApplicationSerializer,
     RecruitmentApplicationCreateSerializer,
     RecruitmentApplicationDetailSerializer,
@@ -80,11 +81,16 @@ def parse_uuid_parameter(request, name):
 def application_queryset():
     return RecruitmentApplication.objects.select_related(
         "applicant",
+        "applicant__membership",
         "decision_by",
+        "offer_by",
         "opportunity__form__department",
         "opportunity__form__position",
         "cv",
-    ).prefetch_related("answers__question")
+    ).prefetch_related(
+        "answers__question",
+        "applicant__membership__assignments",
+    )
 
 
 class RecruitmentFormListCreateView(generics.ListCreateAPIView):
@@ -304,8 +310,9 @@ class RecruitmentApplicationStatusView(APIView):
         tags=["Recruitment"],
         summary="Change an application workflow status",
         description=(
-            "Accepted and rejected are final decisions and trigger one decision "
-            "email. Intermediate statuses do not send email."
+            "HR can review, contact, interview, send an offer, or reject. Sending "
+            "an offer emails the candidate but creates no membership. Only the "
+            "candidate can accept or decline an outstanding offer."
         ),
         request=ApplicationStatusUpdateSerializer,
         responses={200: RecruitmentApplicationDetailSerializer},
@@ -321,10 +328,51 @@ class RecruitmentApplicationStatusView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         application = serializer.save()
-        send_application_decision_email(application)
+        send_application_status_email(application)
         application = application_queryset().get(pk=application.pk)
         return Response(
             RecruitmentApplicationDetailSerializer(
+                application,
+                context={"request": request},
+            ).data
+        )
+
+
+class RecruitmentApplicationOfferResponseView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    @extend_schema(
+        tags=["Recruitment"],
+        summary="Accept or decline the authenticated candidate's offer",
+        description=(
+            "Only the applicant can respond. Acceptance creates or reactivates "
+            "membership when needed and withdraws the applicant's other open "
+            "applications. Declining creates no membership and leaves other "
+            "applications open."
+        ),
+        request=ApplicationOfferResponseSerializer,
+        responses={
+            200: CandidateApplicationSerializer,
+            400: OpenApiResponse(description="No outstanding offer."),
+            404: OpenApiResponse(description="Application not found."),
+        },
+    )
+    def post(self, request, application_id):
+        application = get_object_or_404(
+            application_queryset(),
+            pk=application_id,
+            applicant=request.user,
+        )
+        serializer = ApplicationOfferResponseSerializer(
+            data=request.data,
+            context={"request": request, "application": application},
+        )
+        serializer.is_valid(raise_exception=True)
+        application = serializer.save()
+        send_application_status_email(application)
+        application = application_queryset().get(pk=application.pk)
+        return Response(
+            CandidateApplicationSerializer(
                 application,
                 context={"request": request},
             ).data

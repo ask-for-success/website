@@ -40,8 +40,14 @@ class ApplicationStatus(models.TextChoices):
     UNDER_REVIEW = "under_review", "Under review"
     CONTACTED = "contacted", "Contacted"
     INTERVIEW = "interview", "Interview"
+    OFFER_PENDING = "offer_pending", "Offer pending"
     ACCEPTED = "accepted", "Accepted"
     REJECTED = "rejected", "Rejected"
+    DECLINED_BY_CANDIDATE = (
+        "declined_by_candidate",
+        "Declined by candidate",
+    )
+    WITHDRAWN = "withdrawn", "Withdrawn"
 
 
 class DecisionEmailStatus(models.TextChoices):
@@ -49,6 +55,11 @@ class DecisionEmailStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     SENT = "sent", "Sent"
     FAILED = "failed", "Failed"
+
+
+class OfferResponse(models.TextChoices):
+    ACCEPT = "accept", "Accept"
+    DECLINE = "decline", "Decline"
 
 
 class RecruitmentForm(models.Model):
@@ -258,6 +269,22 @@ class RecruitmentApplication(models.Model):
         choices=ApplicationStatus.choices,
         default=ApplicationStatus.SUBMITTED,
     )
+    offer_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="offered_recruitment_applications",
+    )
+    offered_at = models.DateTimeField(null=True, blank=True)
+    offer_responded_at = models.DateTimeField(null=True, blank=True)
+    offer_email_status = models.CharField(
+        max_length=16,
+        choices=DecisionEmailStatus.choices,
+        default=DecisionEmailStatus.NOT_REQUIRED,
+    )
+    offer_email_sent_at = models.DateTimeField(null=True, blank=True)
+    offer_email_error = models.TextField(blank=True)
     decision_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,

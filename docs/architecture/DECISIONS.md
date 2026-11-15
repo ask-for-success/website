@@ -112,9 +112,9 @@ A reusable recruitment form belongs to one department and one position. An HR-au
 
 An application requires an authenticated existing account and is unique per account and opportunity. It stores read-only answers and one PDF CV no larger than 10 MB. CV bytes remain outside PostgreSQL and are available only through an authenticated endpoint to the applicant or an HR-authorized content manager. Private CVs never use a public media URL.
 
-Application states are `submitted`, `under_review`, `contacted`, `interview`, `accepted`, and `rejected`. Only accepted and rejected are final, record the decision actor and time, and trigger a decision email. Delivery failure is recorded without reversing the decision.
+Application states are `submitted`, `under_review`, `contacted`, `interview`, `offer_pending`, `accepted`, `rejected`, `declined_by_candidate`, and `withdrawn`. HR sends an offer or rejects an application; only the authenticated applicant can accept or decline an outstanding offer. Delivery failure is recorded without reversing the related business transition.
 
-Acceptance creates pending membership and an initial assignment for a new member. It reactivates the same durable membership without repeating completed onboarding for a former member. A pending or active member requires the explicit transfer workflow instead of direct acceptance.
+Candidate acceptance creates pending membership and an initial assignment for a new member. It reactivates the same durable membership without repeating completed onboarding for a former member. A pending or active member accepting a different assignment keeps the current assignment until HR completes the explicit transfer workflow.
 
 ## D-025 — Production infrastructure is deferred
 
@@ -155,3 +155,11 @@ Every authenticated account can request `GET /api/v1/memberships/me/`. An accoun
 The response is scoped only to the current account. It contains membership and onboarding state, a safe current and previous assignment summary, and active current or upcoming event-scanner assignments. Assignment actors, internal transfer or departure reasons, other accounts, HR-only information, and private recruitment records are excluded.
 
 Pending and inactive members may inspect their own membership and onboarding state. Scanner assignments are returned only for an active membership and exclude inactive assignments, ended events, and archived events.
+
+## D-030 — Candidate-confirmed recruitment offers
+
+HR cannot directly accept an application. An HR-authorized content manager sends an offer, which records the HR actor and time, changes the application to `offer_pending`, and sends the offer email without creating membership.
+
+Only the authenticated applicant can respond. Acceptance changes the application to `accepted`, creates or reactivates membership when required, and atomically marks every other non-final application for the same applicant as `withdrawn`. Each automatic withdrawal has its own audit record. Declining changes only the offered application to `declined_by_candidate`, creates no membership, and leaves all other applications open.
+
+For a pending or active member accepting an offer for a different assignment, acceptance records the recruitment outcome but does not replace the current assignment. The API reports `requires_department_transfer`, and HR must use the explicit audited transfer operation.

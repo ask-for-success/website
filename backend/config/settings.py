@@ -183,6 +183,7 @@ SPECTACULAR_SETTINGS = {
         "RecruitmentDecisionEmailStatus": (
             "apps.recruitment.models.DecisionEmailStatus"
         ),
+        "RecruitmentOfferResponse": "apps.recruitment.models.OfferResponse",
         "AuditDomain": "apps.audit.models.AuditDomain",
         "AuditAction": "apps.audit.models.AuditAction",
     },

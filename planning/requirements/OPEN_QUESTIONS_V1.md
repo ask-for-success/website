@@ -14,10 +14,6 @@ Can users change their own email address? If yes, must the new address be verifi
 
 Can a rejected applicant apply to the same opportunity again? Under which campaign or time rule?
 
-### Q-018 — Other applications after acceptance
-
-When one application is accepted and creates or reactivates membership, should the applicant's other pending applications be automatically withdrawn, rejected, or remain open?
-
 ### Q-020 — Administrator scope for national ID
 
 Does national ID access belong to the global `account_administrator`, or will there be a future department-scoped administrator with access only to their department?

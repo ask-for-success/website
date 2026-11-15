@@ -6,6 +6,7 @@ from .views import (
     RecruitmentApplicationCreateView,
     RecruitmentApplicationDetailView,
     RecruitmentApplicationListView,
+    RecruitmentApplicationOfferResponseView,
     RecruitmentApplicationStatusView,
     RecruitmentFormDetailView,
     RecruitmentFormListCreateView,
@@ -57,6 +58,11 @@ urlpatterns = [
         "applications/<uuid:application_id>/status/",
         RecruitmentApplicationStatusView.as_view(),
         name="application_status",
+    ),
+    path(
+        "applications/<uuid:application_id>/offer-response/",
+        RecruitmentApplicationOfferResponseView.as_view(),
+        name="application_offer_response",
     ),
     path(
         "applications/<uuid:application_id>/cv/",
