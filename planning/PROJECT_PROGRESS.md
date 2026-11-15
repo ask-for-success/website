@@ -76,6 +76,10 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Apply and verify the clean English organization and membership schemas.
 - [ ] Confirm the membership API contract with the frontend team.
 - [x] Connect recruitment acceptance to existing-membership reactivation.
+- [x] Add the authenticated self-service membership summary endpoint.
+- [x] Return safe current and previous assignments without HR-only actors or reasons.
+- [x] Return only active current or upcoming event-scanner assignments for active members.
+- [x] Return a stable null-membership response for authenticated non-members.
 - [ ] Add national ID only after its administrator scope and audit contract are approved.
 
 ## Events and check-in
@@ -184,13 +188,12 @@ Do not install SeaweedFS or change the local development storage during the curr
 
 ## Next engineering task
 
-The recommended next backend implementation is the member-area summary API. It should return the authenticated user's membership, current department and position, onboarding state, assignment history summary, and active event-scanner assignments without exposing HR-only records.
+The next product decision required for recruitment is how one acceptance affects the candidate's other pending applications. The current implementation leaves them open. After that decision, the backend can implement the approved cross-application transition and audit it atomically.
 
 ## Next implementation
 
 1. Confirm recruitment, membership, news, gallery, and organization contracts with the frontend team through Swagger and Postman.
 2. Decide how acceptance affects the candidate's other pending applications. The current implementation leaves them unchanged.
-3. Build the member-area backend summaries and access rules.
-4. Decide whether donation-intent records belong in V1 before adding donation forms.
-5. Add national ID onboarding only after its administrator scope and audit contract are approved.
-6. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.
+3. Decide whether donation-intent records belong in V1 before adding donation forms.
+4. Add national ID onboarding only after its administrator scope and audit contract are approved.
+5. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.

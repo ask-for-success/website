@@ -55,6 +55,8 @@ Acceptance creates the membership record, but member-area access remains blocked
 
 The member area must provide a profile summary, upcoming events, internal announcements, and events for which the member has check-in permission.
 
+The implemented self-service membership summary is available to the authenticated account before activation so the person can see membership and onboarding state. Active scanner assignments appear only after membership activation. General upcoming events continue to use the public event API, while internal announcements remain subject to the important-content decision.
+
 Private messaging, replies to announcements, and automatic management access are outside V1.
 
 ## CMS and public content

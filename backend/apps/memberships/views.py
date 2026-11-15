@@ -1,5 +1,6 @@
 from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.pagination import PageNumberPagination
@@ -7,11 +8,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import CanManageHr
+from apps.events.models import EventScanner, PublicationStatus
 
-from .models import MemberAssignment, Membership
+from .models import MemberAssignment, Membership, MembershipStatus
 from .serializers import (
     ExistingAccountAdmissionSerializer,
     MemberDepartureSerializer,
+    MemberAreaSummarySerializer,
     MemberTransferSerializer,
     MembershipDetailSerializer,
     MembershipInvitationAcceptSerializer,
@@ -124,6 +127,46 @@ class MembershipDetailView(generics.RetrieveAPIView):
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+
+class MyMembershipSummaryView(APIView):
+    @extend_schema(
+        tags=["Memberships"],
+        summary="Get the current account's member-area summary",
+        description=(
+            "Returns the authenticated account's membership, onboarding, safe "
+            "assignment history, and active upcoming event-scanner assignments. "
+            "Accounts without membership receive a successful response with a "
+            "null membership. HR-only fields are excluded."
+        ),
+        responses={
+            200: MemberAreaSummarySerializer,
+            401: OpenApiResponse(description="Authentication required."),
+        },
+    )
+    def get(self, request):
+        membership = membership_queryset().filter(user=request.user).first()
+        scanner_assignments = EventScanner.objects.none()
+        if membership and membership.status == MembershipStatus.ACTIVE:
+            scanner_assignments = (
+                EventScanner.objects.select_related("event")
+                .filter(
+                    membership=membership,
+                    is_active=True,
+                    event__ends_at__gte=timezone.now(),
+                    event__publication_status__in=(
+                        PublicationStatus.DRAFT,
+                        PublicationStatus.PUBLISHED,
+                    ),
+                )
+                .order_by("event__starts_at", "assigned_at")
+            )
+
+        response_data = {
+            "membership": membership,
+            "active_scanner_assignments": scanner_assignments,
+        }
+        return Response(MemberAreaSummarySerializer(response_data).data)
 
 
 class ExistingAccountAdmissionView(APIView):

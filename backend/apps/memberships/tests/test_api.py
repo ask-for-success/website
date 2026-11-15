@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import Group, Permission
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
+from apps.events.models import Event, EventScanner, PublicationStatus
 from apps.organization.models import Department, Position
 
 from ..models import Membership, MembershipStatus, OnboardingStatus
@@ -308,4 +311,127 @@ class MembershipLifecycleApiTests(APITestCase):
         self.assertIn(
             "/api/v1/memberships/{membership_id}/departures/",
             response.data["paths"],
+        )
+        self.assertIn("/api/v1/memberships/me/", response.data["paths"])
+
+    def test_member_area_requires_authentication(self):
+        self.client.force_authenticate(user=None)
+
+        response = self.client.get("/api/v1/memberships/me/")
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_account_without_membership_receives_empty_member_area(self):
+        self.client.force_authenticate(self.ordinary_user)
+
+        response = self.client.get("/api/v1/memberships/me/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data["membership"])
+        self.assertEqual(response.data["active_scanner_assignments"], [])
+
+    def test_member_area_returns_only_the_current_accounts_safe_membership(self):
+        creation = self.admit_candidate()
+        membership_id = creation.data["id"]
+        self.client.post(
+            f"/api/v1/memberships/{membership_id}/transfers/",
+            {
+                "department_id": str(self.marketing.id),
+                "position_id": str(self.marketing_manager.id),
+                "reason": "Internal HR transfer reason",
+            },
+            format="json",
+        )
+        self.client.force_authenticate(self.candidate)
+
+        response = self.client.get("/api/v1/memberships/me/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        membership = response.data["membership"]
+        self.assertEqual(membership["id"], membership_id)
+        self.assertEqual(
+            membership["current_assignment"]["department"]["name"],
+            "Marketing",
+        )
+        self.assertEqual(len(membership["assignment_history"]), 1)
+        self.assertNotIn("assigned_by", membership["current_assignment"])
+        self.assertNotIn("end_reason", membership["assignment_history"][0])
+        self.assertNotIn("user", membership)
+
+    def test_member_area_lists_only_active_upcoming_scanner_assignments(self):
+        creation = self.admit_candidate()
+        membership_id = creation.data["id"]
+        onboarding_url = f"/api/v1/memberships/{membership_id}/onboarding/"
+        self.client.patch(
+            onboarding_url,
+            {"status": OnboardingStatus.IN_PROGRESS},
+            format="json",
+        )
+        self.client.patch(
+            onboarding_url,
+            {"status": OnboardingStatus.COMPLETED},
+            format="json",
+        )
+        membership = Membership.objects.get(pk=membership_id)
+        now = timezone.now()
+        upcoming_event = Event.objects.create(
+            title="Upcoming scanner event",
+            summary="An upcoming event.",
+            description="Scanner access should appear.",
+            location="Casablanca",
+            starts_at=now + timedelta(days=2),
+            ends_at=now + timedelta(days=2, hours=3),
+            publication_status=PublicationStatus.PUBLISHED,
+            requires_qr_code=True,
+            created_by=self.hr_manager,
+        )
+        past_event = Event.objects.create(
+            title="Past scanner event",
+            summary="A past event.",
+            description="Scanner access should not appear.",
+            location="Rabat",
+            starts_at=now - timedelta(days=2),
+            ends_at=now - timedelta(days=2, hours=-3),
+            publication_status=PublicationStatus.PUBLISHED,
+            requires_qr_code=True,
+            created_by=self.hr_manager,
+        )
+        inactive_event = Event.objects.create(
+            title="Inactive scanner assignment",
+            summary="An inactive scanner assignment.",
+            description="Scanner access should not appear.",
+            location="Marrakesh",
+            starts_at=now + timedelta(days=3),
+            ends_at=now + timedelta(days=3, hours=3),
+            publication_status=PublicationStatus.PUBLISHED,
+            requires_qr_code=True,
+            created_by=self.hr_manager,
+        )
+        EventScanner.objects.create(
+            event=upcoming_event,
+            membership=membership,
+            assigned_by=self.hr_manager,
+        )
+        EventScanner.objects.create(
+            event=past_event,
+            membership=membership,
+            assigned_by=self.hr_manager,
+        )
+        EventScanner.objects.create(
+            event=inactive_event,
+            membership=membership,
+            assigned_by=self.hr_manager,
+            is_active=False,
+        )
+        self.client.force_authenticate(self.candidate)
+
+        response = self.client.get("/api/v1/memberships/me/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        assignments = response.data["active_scanner_assignments"]
+        self.assertEqual(len(assignments), 1)
+        self.assertEqual(assignments[0]["event"]["id"], str(upcoming_event.id))
+        self.assertEqual(
+            assignments[0]["event"]["title"],
+            "Upcoming scanner event",
         )

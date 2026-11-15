@@ -147,3 +147,11 @@ An account administrator can search accounts by UUID, email, first name, last na
 Successful authenticated mutations across account management, access control, organization, CMS, events, recruitment, and membership APIs are audited in the same outer database transaction as the request. Failed mutations are not recorded as completed actions. Account registration and successful login are explicitly recorded without credentials or tokens.
 
 Routine read-only browsing is excluded to keep the log operationally useful. Sensitive reads must be explicitly audited when introduced. Request bodies, query parameters, passwords, tokens, CV contents, and national ID values are never copied into general activity records.
+
+## D-029 — Self-service member summary
+
+Every authenticated account can request `GET /api/v1/memberships/me/`. An account without membership receives a successful response with a null membership so the frontend does not need to interpret membership absence as an API error.
+
+The response is scoped only to the current account. It contains membership and onboarding state, a safe current and previous assignment summary, and active current or upcoming event-scanner assignments. Assignment actors, internal transfer or departure reasons, other accounts, HR-only information, and private recruitment records are excluded.
+
+Pending and inactive members may inspect their own membership and onboarding state. Scanner assignments are returned only for an active membership and exclude inactive assignments, ended events, and archived events.

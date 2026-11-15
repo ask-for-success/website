@@ -20,6 +20,21 @@ The list supports `status`, `department_id`, `search`, `page`, and `page_size`. 
 
 The detail response contains the account summary, membership status, onboarding state, current assignment, and completed assignment history. A current assignment is the one assignment without an end time.
 
+## Current account member-area summary
+
+`GET /api/v1/memberships/me/`
+
+This self-service endpoint requires authentication but does not require HR permission. It always describes the current account and never accepts another user's or membership's identifier.
+
+The response contains:
+
+- `membership`, including status, onboarding state, current department and position, and a safe assignment-history summary;
+- `active_scanner_assignments`, containing active current or upcoming events where the member may scan QR tickets.
+
+An account without membership receives `200` with `membership: null` and an empty scanner-assignment list. Pending and inactive members can see their own membership and onboarding state, but scanner assignments are returned only while the membership is active. Ended events, archived events, and inactive scanner assignments are excluded.
+
+The self-service representation intentionally excludes the member's account record, assignment actors, internal transfer and departure reasons, other members, invitation data, HR notes, and private recruitment records.
+
 ## Admit an existing account
 
 `POST /api/v1/memberships/admissions/`

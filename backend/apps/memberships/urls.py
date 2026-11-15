@@ -7,6 +7,7 @@ from .views import (
     MembershipInvitationAcceptView,
     MembershipInvitationCreateView,
     MembershipListView,
+    MyMembershipSummaryView,
     MembershipOnboardingView,
     MembershipTransferView,
 )
@@ -16,6 +17,7 @@ app_name = "memberships"
 
 urlpatterns = [
     path("", MembershipListView.as_view(), name="list"),
+    path("me/", MyMembershipSummaryView.as_view(), name="my_summary"),
     path(
         "admissions/",
         ExistingAccountAdmissionView.as_view(),

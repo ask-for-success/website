@@ -194,6 +194,82 @@ class MembershipDetailSerializer(MembershipListSerializer):
         return MemberAssignmentSerializer(assignments, many=True).data
 
 
+class MemberAreaAssignmentSerializer(serializers.ModelSerializer):
+    department = DepartmentReferenceSerializer(read_only=True)
+    position = PositionReferenceSerializer(read_only=True)
+
+    class Meta:
+        model = MemberAssignment
+        fields = (
+            "id",
+            "department",
+            "position",
+            "starts_at",
+            "ends_at",
+        )
+        read_only_fields = fields
+
+
+class MemberAreaMembershipSerializer(serializers.ModelSerializer):
+    onboarding = MembershipOnboardingSerializer(read_only=True)
+    current_assignment = serializers.SerializerMethodField()
+    assignment_history = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Membership
+        fields = (
+            "id",
+            "status",
+            "accepted_at",
+            "onboarding",
+            "current_assignment",
+            "assignment_history",
+        )
+        read_only_fields = fields
+
+    @extend_schema_field(MemberAreaAssignmentSerializer(allow_null=True))
+    def get_current_assignment(self, instance):
+        assignment = next(
+            (
+                item
+                for item in instance.assignments.all()
+                if item.ends_at is None
+            ),
+            None,
+        )
+        if assignment is None:
+            return None
+        return MemberAreaAssignmentSerializer(assignment).data
+
+    @extend_schema_field(MemberAreaAssignmentSerializer(many=True))
+    def get_assignment_history(self, instance):
+        assignments = [
+            item for item in instance.assignments.all() if item.ends_at is not None
+        ]
+        return MemberAreaAssignmentSerializer(assignments, many=True).data
+
+
+class MemberAreaEventSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    summary = serializers.CharField()
+    location = serializers.CharField()
+    starts_at = serializers.DateTimeField()
+    ends_at = serializers.DateTimeField()
+    requires_qr_code = serializers.BooleanField()
+
+
+class MemberAreaScannerAssignmentSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    assigned_at = serializers.DateTimeField()
+    event = MemberAreaEventSerializer()
+
+
+class MemberAreaSummarySerializer(serializers.Serializer):
+    membership = MemberAreaMembershipSerializer(allow_null=True)
+    active_scanner_assignments = MemberAreaScannerAssignmentSerializer(many=True)
+
+
 class ExistingAccountAdmissionSerializer(serializers.Serializer):
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(is_active=True),
