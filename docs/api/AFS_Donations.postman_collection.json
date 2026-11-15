@@ -1,0 +1,147 @@
+{
+  "info": {
+    "_postman_id": "6af90a5b-1e4b-45dc-b43d-af3cfb101c7b",
+    "name": "AFS - Donations",
+    "description": "Public donation-interest submission and protected content-manager review flow.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 - Submit cash donation interest",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Donation submission is created', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('submission_id', body.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Donor\",\n  \"email\": \"jane.donor@example.com\",\n  \"phone_number\": \"+212600000000\",\n  \"donation_type\": \"cash\",\n  \"details\": \"I would like to support the next workshop.\"\n}"
+        },
+        "url": "{{base_url}}/api/v1/donations/submissions/"
+      }
+    },
+    {
+      "name": "2 - Login as content manager",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Content-manager login succeeds', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('manager_access_token', body.access_token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{manager_email}}\",\n  \"password\": \"{{manager_password}}\"\n}"
+        },
+        "url": "{{base_url}}/api/v1/auth/login/"
+      }
+    },
+    {
+      "name": "3 - List donation submissions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{manager_access_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/donations/management/submissions/?donation_type=cash"
+      }
+    },
+    {
+      "name": "4 - Get donation submission",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{manager_access_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/donations/management/submissions/{{submission_id}}/"
+      }
+    },
+    {
+      "name": "5 - Read footer settings",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/content/site/"
+      }
+    },
+    {
+      "name": "6 - Update footer contact and social links",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{manager_access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"contact_email\": \"contact@askforsuccess.org\",\n  \"contact_phone\": \"+212 6 00 00 00 00\",\n  \"contact_location\": \"Casablanca, Morocco\",\n  \"tiktok_url\": \"https://www.tiktok.com/@askforsuccess\",\n  \"youtube_url\": \"https://www.youtube.com/@askforsuccess\",\n  \"instagram_url\": \"https://www.instagram.com/askforsuccess\",\n  \"linkedin_url\": \"https://www.linkedin.com/company/askforsuccess\"\n}"
+        },
+        "url": "{{base_url}}/api/v1/content/site/"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "manager_email",
+      "value": "cms-manager@example.com"
+    },
+    {
+      "key": "manager_password",
+      "value": "StrongPassword!2026"
+    },
+    {
+      "key": "manager_access_token",
+      "value": ""
+    },
+    {
+      "key": "submission_id",
+      "value": ""
+    }
+  ]
+}

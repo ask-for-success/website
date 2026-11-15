@@ -6,7 +6,7 @@ This file records delivery status without duplicating requirements, database mod
 
 ## Current position
 
-- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, event foundation, public event registration, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, and immutable recruitment and membership audit records.
+- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, event foundation, public event registration, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, and immutable recruitment and membership audit records.
 - **Under review:** global roles, permissions, authentication behavior, and frontend contracts.
 - **In progress:** organization, membership, invitations, onboarding, recruitment frontend validation, and CMS frontend validation.
 - **Deferred to the final infrastructure phase:** self-hosted open-source file storage and Amazon SES production email configuration.
@@ -151,10 +151,24 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Confirm Markdown article bodies with inline images referenced by URL.
 - [x] Add YouTube-hosted gallery highlight videos with validated embed data, optional presentation thumbnails, and publication states.
 - [x] Add event cover images, attendance labels, and upcoming/past filtering.
-- [x] Keep donation instructions editable without creating an unapproved donation-submission workflow.
+- [x] Keep donation-section instructions and CTA content editable by content managers.
+- [x] Keep footer contact details and social-media links editable by content managers.
 - [ ] Confirm the API contract and card ordering with the frontend team.
 - [x] Select organization-owned, self-hosted open-source storage for production files, with SeaweedFS as the planned service.
 - [ ] Deferred: integrate SeaweedFS and production media delivery in the final infrastructure phase.
+
+## Donations
+
+- [x] Approve donation-interest records for V1.
+- [x] Use a fixed public form instead of a dynamic form builder.
+- [x] Require donor name, email, phone, cash-or-goods type, and donation details.
+- [x] Store submissions independently from editable CMS content.
+- [x] Return only a safe receipt from the public endpoint.
+- [x] Restrict complete submission lists and details to content managers.
+- [x] Add filtering, search, pagination, migrations, tests, and Swagger documentation.
+- [x] Send an immediate donor acknowledgement and preserve the record on email failure.
+- [ ] Confirm the donation form and dashboard contract with the frontend team.
+- [ ] Deferred: configure and validate Amazon SES in the final infrastructure phase.
 
 ## File storage TODO
 
@@ -198,10 +212,10 @@ Do not install SeaweedFS or change the local development storage during the curr
 
 ## Next engineering task
 
-Validate the candidate login and onboarding contract with the frontend: show mandatory onboarding whenever `onboarding_required` is true and unlock member features only when `can_access_member_features` is true.
+Resolve and implement the remaining event capacity, participant cancellation, manual-participant, and event-cancellation rules.
 
 ## Next implementation
 
-1. Confirm recruitment, membership, news, gallery, and organization contracts with the frontend team through Swagger and Postman.
-2. Decide whether donation-intent records belong in V1 before adding donation forms.
+1. Confirm recruitment, membership, content, donations, events, and organization contracts with the frontend team through Swagger and Postman.
+2. Complete the remaining event lifecycle rules after product decisions are confirmed.
 3. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.

@@ -408,7 +408,15 @@ class ContentApiTests(APITestCase):
         self.client.force_authenticate(self.content_manager)
         update_response = self.client.patch(
             "/api/v1/content/site/",
-            {"contact_email": "contact@askforsuccess.org"},
+            {
+                "contact_email": "contact@askforsuccess.org",
+                "contact_phone": "+212 6 12 34 56 78",
+                "contact_location": "Casablanca, Morocco",
+                "tiktok_url": "https://www.tiktok.com/@askforsuccess",
+                "youtube_url": "https://www.youtube.com/@askforsuccess",
+                "instagram_url": "https://www.instagram.com/askforsuccess",
+                "linkedin_url": "https://www.linkedin.com/company/askforsuccess",
+            },
             format="json",
         )
 
@@ -418,6 +426,25 @@ class ContentApiTests(APITestCase):
             update_response.data["contact_email"],
             "contact@askforsuccess.org",
         )
+        self.assertEqual(
+            update_response.data["contact_phone"],
+            "+212 6 12 34 56 78",
+        )
+        self.assertEqual(
+            update_response.data["instagram_url"],
+            "https://www.instagram.com/askforsuccess",
+        )
+
+    def test_ordinary_account_cannot_update_footer_settings(self):
+        self.client.force_authenticate(self.ordinary_user)
+
+        response = self.client.patch(
+            "/api/v1/content/site/",
+            {"linkedin_url": "https://www.linkedin.com/company/denied"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_public_gallery_videos_hide_drafts(self):
         published = GalleryVideo.objects.create(

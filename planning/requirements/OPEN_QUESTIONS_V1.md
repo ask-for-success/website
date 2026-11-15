@@ -35,7 +35,3 @@ What happens to registrations, QR tickets, and notifications when a published ev
 ### Q-014 — Important-content notification
 
 What makes content or an event important enough to create an internal announcement?
-
-### Q-015 — Donations
-
-Are donation-intent records part of V1?

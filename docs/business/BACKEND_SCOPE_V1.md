@@ -67,6 +67,10 @@ The CMS manages predefined sections rather than a free-form page builder. It cov
 
 Language handling follows decision [D-009](../architecture/DECISIONS.md). Media files remain outside PostgreSQL; the database stores metadata and references. The media library is flat, with no planned albums.
 
+## Donations
+
+V1 includes a fixed public donation-interest form for cash or goods. The form stores donor contact information and donation details without processing a payment. Content managers can read the submitted records through protected APIs, while public responses omit contact data. The donor receives an acknowledgement email confirming receipt and future contact; delivery failure is recorded without deleting the submission.
+
 ## Events and attendance
 
 V1 must support:
@@ -82,7 +86,7 @@ V1 must support:
 
 ## Notifications and email
 
-Internal announcements are one-way. Transactional email will later support password recovery, acceptance and onboarding invitations, final decisions, QR delivery, and delivery retries. An existing-account acceptance email directs the user to onboarding. A new invited account receives secure account-setup and onboarding instructions. Email failure must never reverse a business decision.
+Internal announcements are one-way. Transactional email supports current donation acknowledgements, recruitment decisions, and QR delivery through the configured Django email interface. Password recovery, invitation delivery, production Amazon SES configuration, and delivery retries remain later work. An existing-account acceptance email directs the user to onboarding. A new invited account receives secure account-setup and onboarding instructions. Email failure must never reverse a business decision or delete a stored submission.
 
 ## Audit
 

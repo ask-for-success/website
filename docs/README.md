@@ -13,10 +13,12 @@ This file is the single entry point for project documentation. Each subject has 
 | Understand membership lifecycle and invitations | [Membership guide](./api/MEMBERSHIPS.md) |
 | Understand events, registrations, and check-in | [Events guide](./api/EVENTS.md) |
 | Understand public-page, news, gallery, and media CMS behavior | [Content guide](./api/CONTENT.md) |
+| Understand the public donation form and manager submission access | [Donations guide](./api/DONATIONS.md) |
 | Understand recruitment forms, applications, CVs, and decisions | [Recruitment guide](./api/RECRUITMENT.md) |
 | Understand immutable recruitment and membership audit records | [Audit guide](./api/AUDIT.md) |
 | Test authentication manually | [Authentication Postman collection](./api/AFS_Authentication.postman_collection.json) |
 | Test roles and permissions manually | [Access-control Postman collection](./api/AFS_Access_Control.postman_collection.json) |
+| Test donation submissions manually | [Donations Postman collection](./api/AFS_Donations.postman_collection.json) |
 | Understand the V1 functional scope | [Backend V1 scope](./business/BACKEND_SCOPE_V1.md) |
 | Understand components and boundaries | [Architecture](./architecture/ARCHITECTURE.md) |
 | Find an approved decision | [Decisions](./architecture/DECISIONS.md) |

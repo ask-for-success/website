@@ -73,6 +73,10 @@ The `gallery_videos` table stores validated YouTube URLs with locally managed op
 
 Image files remain outside PostgreSQL. The database stores their relative media paths. Draft and archived records remain available to content managers; public queries return only due published or scheduled records whose category is active.
 
+## Donations
+
+The `donation_submissions` table stores the fixed public donation form: donor name, normalized email, phone number, cash-or-goods type, donation details, acknowledgement-email delivery state, delivery time and error, and timestamps. It stores an expression of interest only and contains no payment credentials or transaction data. Submissions are read-only through the API and visible only to content managers.
+
 ## Recruitment
 
 The `recruitment_forms` table connects one reusable form to one department and one position. Its ordered questions and choice options use the same seven approved input types as event forms. Form names are case-insensitively unique within their department and position.

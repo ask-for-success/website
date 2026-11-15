@@ -16,7 +16,7 @@ The backend follows the approved layouts with predefined, typed content. It is n
 
 - `GET|PATCH /api/v1/content/site/`
 
-This singleton stores the organization name, tagline, contact email, phone, location, and TikTok, YouTube, Instagram, and LinkedIn URLs.
+This singleton stores the organization name, tagline, contact email, phone, location, and TikTok, YouTube, Instagram, and LinkedIn URLs. Public visitors can read it, while only content managers can change footer contact details or social-media links.
 
 ## Structured public pages
 
@@ -46,7 +46,7 @@ Ordered content is managed through:
 - `GET|POST /api/v1/content/get-involved/steps/`
 - `GET|PATCH /api/v1/content/get-involved/steps/{item_id}/`
 
-Public lists omit inactive items. Content managers receive active and inactive items. `display_order` controls frontend ordering. Donation options currently contain editable explanatory content and CTA links only; donation-intent submission remains outside the API until its open product decision is resolved.
+Public lists omit inactive items. Content managers receive active and inactive items. `display_order` controls frontend ordering. Donation options contain editable explanatory content and CTA links. The fixed operational donation form and protected submissions are documented separately in [DONATIONS.md](./DONATIONS.md).
 
 ## Editable page text
 

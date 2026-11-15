@@ -130,7 +130,7 @@ Shared site contact and footer data has one source of truth. Impact statistics a
 
 Gallery highlight videos are hosted exclusively on YouTube. The CMS stores a validated canonical YouTube URL, and the API derives the video ID, privacy-enhanced embed URL, and default YouTube thumbnail URL. No video binary is uploaded to or stored by the application.
 
-The Get Involved page stores donation instructions and CTA content only. No donation-intent record or submission endpoint is created until the donation product question is approved.
+The Get Involved page stores editable donation instructions and CTA content. Operational donation submissions remain separate from CMS page content.
 
 ## D-027 — Immutable operational audit trail
 
@@ -177,3 +177,11 @@ The accepted candidate's login account remains active before onboarding so the p
 Only the authenticated member completes onboarding. The required V1 submission contains the national ID number and never an identity-card scan, image, or document. Successful validation atomically stores one normalized unique identity record, completes onboarding, and changes membership from `pending_onboarding` to `active`. HR may mark onboarding in progress but cannot complete it for the member.
 
 Ordinary member responses expose only whether a national ID was collected. The complete value is available through a dedicated endpoint only to HR-authorized content managers, global account administrators, and superusers. Submission and every successful complete-value read are audited without placing the number in audit state.
+
+## D-033 — Fixed donation-interest workflow
+
+Donation-interest records are part of V1. The public form has fixed fields for first name, last name, email, phone number, donation type, and details. Donation type is limited to cash or goods. This workflow records an intention to donate and never processes payment information.
+
+The public response does not echo donor contact data. Content managers can list, search, filter, and read the immutable submissions through protected endpoints. CMS content managers may edit the donation section's explanatory content and CTA links, but they cannot change the operational form schema or rewrite submitted donor data.
+
+After the record is stored, the backend attempts an acknowledgement email telling the donor that the information was received and that the team will make contact later. Email delivery state and errors are retained; failure never deletes the business record. Amazon SES remains the selected production provider for the final infrastructure phase.

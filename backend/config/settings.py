@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "apps.memberships",
     "apps.events",
     "apps.content",
+    "apps.donations",
     "apps.organization",
     "apps.recruitment",
     "apps.audit",
@@ -157,6 +158,10 @@ SPECTACULAR_SETTINGS = {
         "EventPublicationStatus": "apps.events.models.PublicationStatus",
         "ContentPublicationStatus": "apps.content.models.PublicationStatus",
         "ContentSection": "apps.content.models.ContentSection",
+        "DonationType": "apps.donations.models.DonationType",
+        "DonationAcknowledgementEmailStatus": (
+            "apps.donations.models.AcknowledgementEmailStatus"
+        ),
         "InvolvementFeatureSection": (
             "apps.content.models.InvolvementFeatureSection"
         ),
