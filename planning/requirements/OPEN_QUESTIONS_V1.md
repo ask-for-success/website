@@ -57,7 +57,3 @@ Are donation-intent records part of V1?
 ### Q-016 — CMS audit coverage
 
 Must every publication and archive action be audited in V1?
-
-### Q-021 — Production media storage
-
-Will production media use a managed object-storage provider or a self-hosted SeaweedFS deployment owned by the organization? Do not install or integrate either option until the team approves the deployment model.

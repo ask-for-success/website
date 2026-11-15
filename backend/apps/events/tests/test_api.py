@@ -340,6 +340,46 @@ class EventApiTests(EventTestDataMixin, APITestCase):
             response.data["paths"],
         )
 
+    def test_public_event_list_filters_upcoming_and_past(self):
+        upcoming_creation = self.create_event_through_api()
+        past_start = timezone.now() - timedelta(days=3)
+        past = Event.objects.create(
+            title="Past workshop",
+            summary="Completed event",
+            description="A completed workshop.",
+            location="Rabat",
+            starts_at=past_start,
+            ends_at=past_start + timedelta(hours=2),
+            publication_status=PublicationStatus.PUBLISHED,
+            created_by=self.content_manager,
+        )
+        self.client.force_authenticate(user=None)
+
+        upcoming_response = self.client.get(
+            "/api/v1/events/",
+            {"timing": "upcoming"},
+        )
+        past_response = self.client.get(
+            "/api/v1/events/",
+            {"timing": "past"},
+        )
+
+        self.assertEqual(upcoming_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(past_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            {item["id"] for item in upcoming_response.data},
+            {upcoming_creation.data["id"]},
+        )
+        self.assertEqual(
+            {item["id"] for item in past_response.data},
+            {str(past.id)},
+        )
+
+    def test_invalid_event_timing_filter_is_rejected(self):
+        response = self.client.get("/api/v1/events/", {"timing": "later"})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class EventModelTests(EventTestDataMixin, TestCase):
     @classmethod

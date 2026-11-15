@@ -6,10 +6,10 @@ This file records delivery status without duplicating requirements, database mod
 
 ## Current position
 
-- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, event foundation, public event registration, QR tickets, scanner assignments, check-in, and the news and gallery CMS foundation.
+- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, event foundation, public event registration, QR tickets, scanner assignments, check-in, and the structured public-page and media CMS foundation.
 - **Under review:** global roles, permissions, authentication behavior, and frontend contracts.
-- **In progress:** organization, membership, invitations, onboarding, recruitment frontend validation, CMS frontend validation, and production email delivery.
-- **Deferred for team review:** production media storage provider and deployment model.
+- **In progress:** organization, membership, invitations, onboarding, recruitment frontend validation, and CMS frontend validation.
+- **Deferred to the final infrastructure phase:** self-hosted open-source file storage and Amazon SES production email configuration.
 
 ## Delivery phases
 
@@ -92,7 +92,7 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Make the first check-in unique and report later scans.
 - [x] Translate event code, API fields, routes, tables, tests, Swagger, and documentation into English.
 - [x] Apply and verify the English event database schema.
-- [ ] Configure and validate the production email provider.
+- [ ] Deferred: configure and validate Amazon SES in the final infrastructure phase.
 - [ ] Confirm the event contract with the frontend team.
 
 ## Integrated recruitment
@@ -116,10 +116,15 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Add migrations, automated tests, Swagger, and frontend documentation.
 - [ ] Decide how one acceptance affects the candidate's other pending applications.
 - [ ] Confirm the recruitment contract with the frontend team.
-- [ ] Configure and validate the production email provider.
+- [ ] Deferred: configure and validate Amazon SES in the final infrastructure phase.
 
 ## Content management
 
+- [x] Implement typed shared site and footer settings.
+- [x] Implement structured Home, About, Get Involved, and Events page content.
+- [x] Seed editable copy from the approved page designs.
+- [x] Add ordered Home cards, About pillars, shared impact statistics, involvement features, donation instructions, and process steps.
+- [x] Keep layout, responsive design, icons, and countdown calculation in the frontend.
 - [x] Confirm that every content manager can manage news and gallery content.
 - [x] Add editable headings and introductions for the news and gallery pages.
 - [x] Add independent, ordered categories for news and gallery.
@@ -130,9 +135,12 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Add protected content-manager create and update operations.
 - [x] Add image validation, local media storage, migrations, tests, and Swagger documentation.
 - [x] Confirm Markdown article bodies with inline images referenced by URL.
+- [x] Add YouTube-hosted gallery highlight videos with validated embed data, optional presentation thumbnails, and publication states.
+- [x] Add event cover images, attendance labels, and upcoming/past filtering.
+- [x] Keep donation instructions editable without creating an unapproved donation-submission workflow.
 - [ ] Confirm the API contract and card ordering with the frontend team.
-- [ ] Select managed storage or self-hosted SeaweedFS after team review.
-- [ ] Configure production storage and media delivery only after that decision.
+- [x] Select organization-owned, self-hosted open-source storage for production files, with SeaweedFS as the planned service.
+- [ ] Deferred: integrate SeaweedFS and production media delivery in the final infrastructure phase.
 
 ## File storage TODO
 
@@ -143,12 +151,9 @@ Current development behavior is complete enough for API testing:
 - CVs have no public media URL and require applicant-or-HR authorization through the API.
 - PostgreSQL stores file paths and metadata, not file bytes.
 
-Production storage remains intentionally unimplemented until the team chooses one deployment model:
+Production files will remain under the organization's control in a self-hosted open-source storage service. SeaweedFS is the planned service. Its integration remains intentionally unimplemented until the final infrastructure phase so current work can focus on business structure and logic.
 
-- managed object storage; or
-- organization-owned, self-hosted SeaweedFS using its S3-compatible interface.
-
-After the decision, the storage implementation must include:
+When the final infrastructure phase begins, the self-hosted storage implementation must include:
 
 - separate public CMS media and private document access policies;
 - persistent production volumes or buckets;
@@ -159,7 +164,7 @@ After the decision, the storage implementation must include:
 - automated authorization and upload tests;
 - documented recovery procedures.
 
-Do not install SeaweedFS or integrate a cloud provider before the team approves the deployment model.
+Do not install SeaweedFS or change the local development storage during the current business-logic phase.
 
 ## Next engineering task
 
@@ -170,6 +175,7 @@ The recommended next backend implementation is an audit trail for sensitive recr
 1. Confirm recruitment, membership, news, gallery, and organization contracts with the frontend team through Swagger and Postman.
 2. Decide how acceptance affects the candidate's other pending applications. The current implementation leaves them unchanged.
 3. Add audit records for sensitive recruitment and membership actions.
-4. Configure the production email provider before external decision and QR testing.
-5. Choose managed storage or self-hosted SeaweedFS, then implement the approved production storage plan.
+4. Build the member-area backend summaries and access rules.
+5. Decide whether donation-intent records belong in V1 before adding donation forms.
 6. Add national ID onboarding only after its administrator scope and audit contract are approved.
+7. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.

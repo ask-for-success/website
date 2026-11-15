@@ -13,6 +13,8 @@ Main endpoints:
 - `GET /api/v1/events/{event_id}/`: retrieves an event.
 - `PATCH /api/v1/events/{event_id}/`: updates an event as a content manager.
 
+Event records also provide an optional cover image with required alternative text and an editable attendance label such as `Free for students`. Use `timing=upcoming` or `timing=past` on the event list. Upcoming events are returned chronologically; past events are returned newest first. The frontend calculates countdown values from `starts_at` rather than storing a countdown in the database.
+
 The form supports `short_text`, `long_text`, `email`, `phone`, `single_choice`, `multiple_choice`, and `yes_no`. Choice questions require at least two options. Question and option display orders must be unique.
 
 The form and the `requires_qr_code` setting cannot be replaced after the first registration. This protects existing answers and tickets from becoming inconsistent.
@@ -43,11 +45,11 @@ Content managers can list registrations with `GET /api/v1/events/{event_id}/regi
 
 When an event requires QR check-in, the server generates a random code, stores only its hash, and attaches the PNG image to an email sent immediately after registration. An email failure does not delete the registration; the ticket records the `failed` delivery status for later handling.
 
-The local environment uses Django's console email backend by default, so messages and attachments appear in backend logs. Configure an SMTP provider with the `AFS_EMAIL_*` environment variables before production.
+The local environment uses Django's console email backend by default, so messages and attachments appear in backend logs. Amazon SES is the selected production email provider. The existing `AFS_EMAIL_*` SMTP settings are its configuration boundary, but credentials and live delivery testing are deferred to the final infrastructure phase.
 
 ## Event scanners
 
-A content manager can assign an active member to an event:
+Any content manager, including a content manager with HR permission, can assign an active member to an event:
 
 - `GET /api/v1/events/{event_id}/scanners/`
 - `POST /api/v1/events/{event_id}/scanners/`

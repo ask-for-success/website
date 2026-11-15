@@ -115,3 +115,19 @@ An application requires an authenticated existing account and is unique per acco
 Application states are `submitted`, `under_review`, `contacted`, `interview`, `accepted`, and `rejected`. Only accepted and rejected are final, record the decision actor and time, and trigger a decision email. Delivery failure is recorded without reversing the decision.
 
 Acceptance creates pending membership and an initial assignment for a new member. It reactivates the same durable membership without repeating completed onboarding for a former member. A pending or active member requires the explicit transfer workflow instead of direct acceptance.
+
+## D-025 — Production infrastructure is deferred
+
+Production files remain under the organization's control in an organization-owned, self-hosted open-source storage service. SeaweedFS is the planned service for CMS media, CVs, and other application files. Local development continues to use the existing public media directory and separate private CV directory. SeaweedFS installation, access policy design, file migration, backup, retention, and delivery configuration belong to the final infrastructure phase and must not interrupt current business-logic development.
+
+Amazon SES is the selected production email provider. Development continues to use Django's console or test email backends through the same email interface. SES credentials and live delivery testing are deferred to the final infrastructure phase. Business decisions and delivery states remain implemented now so introducing both production services later does not require changing domain APIs or workflows.
+
+## D-026 — Predefined structured public-page CMS
+
+The CMS follows the approved page designs through typed, predefined models rather than a free-form page builder or unvalidated page JSON. The backend owns editable copy, uploaded images, accessible alternative text, CTA links, ordered items, activation, publication, and validation. The frontend owns layout, styles, icons, responsive rendering, navigation, and countdown calculations.
+
+Shared site contact and footer data has one source of truth. Impact statistics are shared by Home and About. Upcoming and past event sections query the event domain instead of duplicating event records in page content. News and Gallery retain their publication models, while gallery highlight videos have their own publication records.
+
+Gallery highlight videos are hosted exclusively on YouTube. The CMS stores a validated canonical YouTube URL, and the API derives the video ID, privacy-enhanced embed URL, and default YouTube thumbnail URL. No video binary is uploaded to or stored by the application.
+
+The Get Involved page stores donation instructions and CTA content only. No donation-intent record or submission endpoint is created until the donation product question is approved.

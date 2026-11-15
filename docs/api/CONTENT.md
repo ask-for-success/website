@@ -1,12 +1,52 @@
-# News and gallery content
+# Public-page and media CMS
 
 This guide explains the implemented CMS behavior. Swagger is the exact source for request fields and responses: [http://localhost:8000/api/docs/](http://localhost:8000/api/docs/).
 
 ## Access model
 
-Public visitors can read visible page settings, categories, news articles, and gallery items without an account. Every user in the `content_manager` group can create and update this content. No additional CMS or HR permission is required.
+Public visitors can read visible site settings, structured pages, categories, news articles, gallery items, and highlight videos without an account. Every user in the `content_manager` group can create and update this content. No additional CMS or HR permission is required.
 
-Content is not permanently deleted through the API. A content manager preserves its history by changing `publication_status` to `archived`.
+Content is not permanently deleted through the API. A content manager preserves its history by changing `publication_status` to `archived` or by deactivating an ordered page item.
+
+## CMS boundary
+
+The backend follows the approved layouts with predefined, typed content. It is not a free-form page builder. The backend owns text, images, links, ordering, activation, publication, and validation. The frontend owns spacing, colors, typography, responsive layout, icons, countdown rendering, and navigation behavior.
+
+## Shared site and footer content
+
+- `GET|PATCH /api/v1/content/site/`
+
+This singleton stores the organization name, tagline, contact email, phone, location, and TikTok, YouTube, Instagram, and LinkedIn URLs.
+
+## Structured public pages
+
+The singleton page endpoints are public for reading and restricted to content managers for updates:
+
+- `GET|PATCH /api/v1/content/pages/home/`
+- `GET|PATCH /api/v1/content/pages/about/`
+- `GET|PATCH /api/v1/content/pages/get-involved/`
+- `GET|PATCH /api/v1/content/pages/events/`
+
+Each page exposes named fields matching its approved design. Images use `multipart/form-data` and require alternative text. CTA links accept an internal path or a complete HTTP or HTTPS URL.
+
+The Home response includes active involvement cards and shared impact statistics. The About response includes active pillars and the same shared statistics. The Get Involved response includes active volunteer and partner features, donation-option copy, and process steps.
+
+Ordered content is managed through:
+
+- `GET|POST /api/v1/content/impact-statistics/`
+- `GET|PATCH /api/v1/content/impact-statistics/{item_id}/`
+- `GET|POST /api/v1/content/home/features/`
+- `GET|PATCH /api/v1/content/home/features/{item_id}/`
+- `GET|POST /api/v1/content/about/pillars/`
+- `GET|PATCH /api/v1/content/about/pillars/{item_id}/`
+- `GET|POST /api/v1/content/get-involved/features/`
+- `GET|PATCH /api/v1/content/get-involved/features/{item_id}/`
+- `GET|POST /api/v1/content/get-involved/donation-options/`
+- `GET|PATCH /api/v1/content/get-involved/donation-options/{item_id}/`
+- `GET|POST /api/v1/content/get-involved/steps/`
+- `GET|PATCH /api/v1/content/get-involved/steps/{item_id}/`
+
+Public lists omit inactive items. Content managers receive active and inactive items. `display_order` controls frontend ordering. Donation options currently contain editable explanatory content and CTA links only; donation-intent submission remains outside the API until its open product decision is resolved.
 
 ## Editable page text
 
@@ -56,6 +96,15 @@ The list supports `category`, `search`, `page`, and `page_size` query parameters
 
 A gallery item contains an image, accessible alternative text, optional visible caption, category, publication state, publication time, and display order. The list supports the same category, search, status, and pagination behavior as news.
 
+## Gallery highlight videos
+
+- `GET|POST /api/v1/content/gallery/videos/`
+- `GET|PATCH /api/v1/content/gallery/videos/{video_id}/`
+
+A highlight video is hosted on YouTube and is never uploaded through this API. The CMS stores a validated `youtube_url` together with its title, optional locally managed presentation thumbnail, thumbnail alternative text, duration label, publication state, publication time, and ordering. Only YouTube watch, share, Shorts, live, and embed URLs are accepted.
+
+Public responses include `youtube_video_id`, `youtube_embed_url`, and `youtube_thumbnail_url`. The frontend embeds `youtube_embed_url` in its video player and may use `youtube_thumbnail_url` when no custom presentation thumbnail is needed. The privacy-enhanced embed URL uses the `youtube-nocookie.com` domain.
+
 ## Publication behavior
 
 The accepted publication states are:
@@ -71,4 +120,4 @@ Public responses also require an active category. A public request for a hidden 
 
 Create and update requests containing an image use `multipart/form-data`. Each image must be a valid raster image no larger than 10 MB. Alternative text is required so the frontend can provide an accessible experience.
 
-In local development, files are stored under `backend/media/` and served from `/media/`. PostgreSQL stores only the file path and content metadata. Production object storage and delivery configuration remain a production-infrastructure task.
+In local development, files are stored under `backend/media/` and served from `/media/`. PostgreSQL stores only the file path and content metadata. Production will use organization-owned, self-hosted open-source storage, with SeaweedFS planned, but storage and delivery integration are deferred to the final infrastructure phase.

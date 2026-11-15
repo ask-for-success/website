@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -33,6 +34,15 @@ class EventListCreateView(APIView):
     @extend_schema(
         tags=["Events"],
         summary="List events",
+        parameters=[
+            OpenApiParameter(
+                name="timing",
+                type=str,
+                enum=("upcoming", "past"),
+                location=OpenApiParameter.QUERY,
+                description="Filter events by their end time.",
+            )
+        ],
         responses={200: EventSerializer(many=True)},
     )
     def get(self, request):
@@ -40,6 +50,21 @@ class EventListCreateView(APIView):
         if not is_content_manager(request.user):
             events = events.filter(
                 publication_status=PublicationStatus.PUBLISHED
+            )
+        timing = request.query_params.get("timing")
+        if timing == "upcoming":
+            events = events.filter(ends_at__gte=timezone.now()).order_by(
+                "starts_at",
+                "title",
+            )
+        elif timing == "past":
+            events = events.filter(ends_at__lt=timezone.now()).order_by(
+                "-starts_at",
+                "title",
+            )
+        elif timing:
+            raise serializers.ValidationError(
+                {"timing": "Use upcoming or past."}
             )
         return Response(EventSerializer(events, many=True).data)
 

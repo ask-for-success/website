@@ -59,7 +59,7 @@ Private messaging, replies to announcements, and automatic management access are
 
 ## CMS and public content
 
-The CMS manages predefined sections rather than a free-form page builder. It covers public pages, news, stories, announcements, media, events, and featured items.
+The CMS manages predefined sections rather than a free-form page builder. It covers shared site and footer settings; structured Home, About, Get Involved, Events, News, and Gallery pages; news, stories, media, events, and featured items. Layout and responsive design remain frontend responsibilities.
 
 Language handling follows decision [D-009](../architecture/DECISIONS.md). Media files remain outside PostgreSQL; the database stores metadata and references. The media library is flat, with no planned albums.
 

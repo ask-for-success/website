@@ -63,6 +63,12 @@ The `news_articles` table stores the title, case-insensitively unique slug, card
 
 The `gallery_items` table stores the image path, alternative text, optional caption, category, publication state and time, display order, responsible users, and timestamps.
 
+The singleton `site_settings`, `home_page_content`, `about_page_content`, `get_involved_page_content`, and `events_page_content` tables store typed copy, CTA links, images, accessible alternative text, contact data, and page-specific headings from the approved designs.
+
+The ordered `impact_statistics`, `home_features`, `about_pillars`, `involvement_features`, `donation_options`, and `involvement_steps` tables support repeatable structured sections without creating a free-form page builder. Active state hides an item publicly without deleting it. Impact statistics are shared by Home and About.
+
+The `gallery_videos` table stores validated YouTube URLs with locally managed optional presentation thumbnails, accessible alternative text, duration labels, ordering, and the standard publication lifecycle. Video files are hosted by YouTube and are never uploaded to the application. YouTube video IDs, privacy-enhanced embed URLs, and default thumbnail URLs are derived by the API and are not duplicated in PostgreSQL.
+
 Image files remain outside PostgreSQL. The database stores their relative media paths. Draft and archived records remain available to content managers; public queries return only due published or scheduled records whose category is active.
 
 ## Recruitment

@@ -154,6 +154,10 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "EventPublicationStatus": "apps.events.models.PublicationStatus",
         "ContentPublicationStatus": "apps.content.models.PublicationStatus",
+        "ContentSection": "apps.content.models.ContentSection",
+        "InvolvementFeatureSection": (
+            "apps.content.models.InvolvementFeatureSection"
+        ),
         "MembershipStatus": "apps.memberships.models.MembershipStatus",
         "OnboardingStatus": "apps.memberships.models.OnboardingStatus",
         "MembershipInvitationStatus": (

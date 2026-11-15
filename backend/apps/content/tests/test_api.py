@@ -12,12 +12,24 @@ from rest_framework.test import APITestCase
 from apps.accounts.models import User
 
 from ..models import (
+    AboutPage,
+    AboutPillar,
     ContentCategory,
     ContentSection,
+    DonationOption,
+    EventsPage,
     GalleryItem,
+    GalleryVideo,
+    GetInvolvedPage,
+    HomeFeature,
+    HomePage,
+    ImpactStatistic,
+    InvolvementFeature,
+    InvolvementStep,
     NewsArticle,
     PageSettings,
     PublicationStatus,
+    SiteSettings,
 )
 
 
@@ -290,3 +302,206 @@ class ContentApiTests(APITestCase):
         self.assertIn("/api/v1/content/news/", response.data["paths"])
         self.assertIn("/api/v1/content/gallery/", response.data["paths"])
         self.assertIn("/api/v1/content/pages/news/", response.data["paths"])
+        self.assertIn("/api/v1/content/pages/home/", response.data["paths"])
+        self.assertIn("/api/v1/content/pages/about/", response.data["paths"])
+        self.assertIn(
+            "/api/v1/content/pages/get-involved/",
+            response.data["paths"],
+        )
+        self.assertIn("/api/v1/content/pages/events/", response.data["paths"])
+        self.assertIn(
+            "/api/v1/content/gallery/videos/",
+            response.data["paths"],
+        )
+
+    def test_structured_pages_are_seeded_from_the_approved_design(self):
+        self.assertTrue(SiteSettings.objects.filter(site_key="main").exists())
+        self.assertTrue(HomePage.objects.filter(page_key="home").exists())
+        self.assertTrue(AboutPage.objects.filter(page_key="about").exists())
+        self.assertTrue(
+            GetInvolvedPage.objects.filter(page_key="get_involved").exists()
+        )
+        self.assertTrue(EventsPage.objects.filter(page_key="events").exists())
+        self.assertEqual(ImpactStatistic.objects.count(), 4)
+        self.assertEqual(HomeFeature.objects.count(), 3)
+        self.assertEqual(AboutPillar.objects.count(), 4)
+        self.assertEqual(InvolvementFeature.objects.count(), 8)
+        self.assertEqual(DonationOption.objects.count(), 2)
+        self.assertEqual(InvolvementStep.objects.count(), 4)
+
+    def test_public_home_page_aggregates_active_typed_content(self):
+        hidden_feature = HomeFeature.objects.order_by("display_order").first()
+        hidden_feature.is_active = False
+        hidden_feature.save(update_fields=("is_active", "updated_at"))
+
+        response = self.client.get("/api/v1/content/pages/home/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["page_key"], "home")
+        self.assertEqual(len(response.data["features"]), 2)
+        self.assertEqual(len(response.data["impact_statistics"]), 4)
+
+    def test_content_manager_sees_inactive_page_items(self):
+        hidden_feature = HomeFeature.objects.order_by("display_order").first()
+        hidden_feature.is_active = False
+        hidden_feature.save(update_fields=("is_active", "updated_at"))
+        self.client.force_authenticate(self.content_manager)
+
+        response = self.client.get("/api/v1/content/pages/home/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["features"]), 3)
+
+    def test_only_content_manager_can_update_structured_page(self):
+        self.client.force_authenticate(self.ordinary_user)
+        denied = self.client.patch(
+            "/api/v1/content/pages/about/",
+            {"mission_heading": "A denied update"},
+            format="json",
+        )
+        self.client.force_authenticate(self.content_manager)
+        accepted = self.client.patch(
+            "/api/v1/content/pages/about/",
+            {"mission_heading": "Creating access together"},
+            format="json",
+        )
+
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(accepted.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            accepted.data["mission_heading"],
+            "Creating access together",
+        )
+        self.assertEqual(
+            AboutPage.objects.get(page_key="about").updated_by,
+            self.content_manager,
+        )
+
+    def test_content_manager_creates_and_hides_ordered_page_item(self):
+        self.client.force_authenticate(self.content_manager)
+        creation = self.client.post(
+            "/api/v1/content/about/pillars/",
+            {
+                "icon_key": "leadership",
+                "title": "Leadership",
+                "body": "Young people learn by leading real initiatives.",
+                "display_order": 5,
+                "is_active": True,
+            },
+            format="json",
+        )
+        item_id = creation.data["id"]
+        update = self.client.patch(
+            f"/api/v1/content/about/pillars/{item_id}/",
+            {"is_active": False},
+            format="json",
+        )
+        self.client.force_authenticate(user=None)
+        public_list = self.client.get("/api/v1/content/about/pillars/")
+
+        self.assertEqual(creation.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(update.status_code, status.HTTP_200_OK)
+        self.assertNotIn(item_id, {item["id"] for item in public_list.data})
+
+    def test_site_contact_settings_are_public_and_manager_editable(self):
+        public_response = self.client.get("/api/v1/content/site/")
+        self.client.force_authenticate(self.content_manager)
+        update_response = self.client.patch(
+            "/api/v1/content/site/",
+            {"contact_email": "contact@askforsuccess.org"},
+            format="json",
+        )
+
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            update_response.data["contact_email"],
+            "contact@askforsuccess.org",
+        )
+
+    def test_public_gallery_videos_hide_drafts(self):
+        published = GalleryVideo.objects.create(
+            title="Youth Summit aftermovie",
+            youtube_url="https://www.youtube.com/watch?v=AbCdEfGhI12",
+            thumbnail=image_file("summit-video.gif"),
+            thumbnail_alt_text="Youth Summit participants",
+            duration_label="3 min",
+            publication_status=PublicationStatus.PUBLISHED,
+            published_at=timezone.now(),
+            created_by=self.content_manager,
+            updated_by=self.content_manager,
+        )
+        GalleryVideo.objects.create(
+            title="Draft video",
+            youtube_url="https://youtu.be/ZyXwVuTsR98",
+            thumbnail=image_file("draft-video.gif"),
+            thumbnail_alt_text="Draft thumbnail",
+            publication_status=PublicationStatus.DRAFT,
+            created_by=self.content_manager,
+            updated_by=self.content_manager,
+        )
+
+        response = self.client.get("/api/v1/content/gallery/videos/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["id"], str(published.id))
+        self.assertEqual(
+            response.data["results"][0]["youtube_video_id"],
+            "AbCdEfGhI12",
+        )
+        self.assertEqual(
+            response.data["results"][0]["youtube_embed_url"],
+            "https://www.youtube-nocookie.com/embed/AbCdEfGhI12",
+        )
+
+    def test_gallery_video_rejects_non_youtube_url(self):
+        self.client.force_authenticate(self.content_manager)
+
+        response = self.client.post(
+            "/api/v1/content/gallery/videos/",
+            {
+                "title": "Externally hosted video",
+                "youtube_url": "https://video.example.com/not-youtube",
+                "thumbnail": image_file("external-video.gif"),
+                "thumbnail_alt_text": "Video thumbnail",
+                "publication_status": PublicationStatus.DRAFT,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("youtube_url", response.data)
+
+    def test_gallery_video_normalizes_youtube_share_url(self):
+        self.client.force_authenticate(self.content_manager)
+
+        response = self.client.post(
+            "/api/v1/content/gallery/videos/",
+            {
+                "title": "YouTube highlight",
+                "youtube_url": "https://youtu.be/LmNoPqRsT34?t=12",
+                "publication_status": PublicationStatus.DRAFT,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            response.data["youtube_url"],
+            "https://www.youtube.com/watch?v=LmNoPqRsT34",
+        )
+        self.assertEqual(response.data["youtube_video_id"], "LmNoPqRsT34")
+        self.assertIsNone(response.data["thumbnail"])
+        self.assertEqual(
+            response.data["youtube_thumbnail_url"],
+            "https://i.ytimg.com/vi/LmNoPqRsT34/hqdefault.jpg",
+        )
+
+    def test_get_involved_page_returns_ordered_donation_and_process_content(self):
+        response = self.client.get("/api/v1/content/pages/get-involved/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["donation_options"]), 2)
+        self.assertEqual(len(response.data["steps"]), 4)
+        self.assertEqual(response.data["steps"][0]["display_order"], 1)

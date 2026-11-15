@@ -1,6 +1,23 @@
 from django.contrib import admin
 
-from .models import ContentCategory, GalleryItem, NewsArticle, PageSettings
+from .models import (
+    AboutPage,
+    AboutPillar,
+    ContentCategory,
+    DonationOption,
+    EventsPage,
+    GalleryItem,
+    GalleryVideo,
+    GetInvolvedPage,
+    HomeFeature,
+    HomePage,
+    ImpactStatistic,
+    InvolvementFeature,
+    InvolvementStep,
+    NewsArticle,
+    PageSettings,
+    SiteSettings,
+)
 
 
 @admin.register(PageSettings)
@@ -44,3 +61,17 @@ class GalleryItemAdmin(admin.ModelAdmin):
     list_filter = ("publication_status", "category")
     search_fields = ("caption", "alt_text")
     ordering = ("display_order", "-published_at")
+
+
+admin.site.register(SiteSettings)
+admin.site.register(HomePage)
+admin.site.register(HomeFeature)
+admin.site.register(AboutPage)
+admin.site.register(AboutPillar)
+admin.site.register(GetInvolvedPage)
+admin.site.register(InvolvementFeature)
+admin.site.register(DonationOption)
+admin.site.register(InvolvementStep)
+admin.site.register(EventsPage)
+admin.site.register(ImpactStatistic)
+admin.site.register(GalleryVideo)

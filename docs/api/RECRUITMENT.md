@@ -86,4 +86,4 @@ Acceptance creates a pending membership and the opportunity's department and pos
 
 CVs are not identity documents. The backend accepts only PDF CVs, verifies the file signature, records size and SHA-256 metadata, and stores the file outside PostgreSQL in private storage.
 
-There is no public `/media/` URL for a CV. The API returns a protected download endpoint that checks the applicant or HR permission on every request and sends `private, no-store` caching headers. The current storage backend is local and private. The production provider remains deferred until the team selects managed storage or self-hosted SeaweedFS.
+There is no public `/media/` URL for a CV. The API returns a protected download endpoint that checks the applicant or HR permission on every request and sends `private, no-store` caching headers. The current storage backend is local and private. Production will use organization-owned, self-hosted open-source storage, with SeaweedFS planned, but its integration is deferred to the final infrastructure phase.

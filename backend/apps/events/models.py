@@ -9,6 +9,14 @@ from django.utils import timezone
 from apps.memberships.models import Membership, MembershipStatus
 
 
+MAX_EVENT_IMAGE_SIZE = 10 * 1024 * 1024
+
+
+def validate_event_image_size(image) -> None:
+    if image.size > MAX_EVENT_IMAGE_SIZE:
+        raise ValidationError("The image must not exceed 10 MB.")
+
+
 class PublicationStatus(models.TextChoices):
     DRAFT = "draft", "Draft"
     PUBLISHED = "published", "Published"
@@ -41,7 +49,15 @@ class Event(models.Model):
     title = models.CharField(max_length=200)
     summary = models.TextField(blank=True)
     description = models.TextField()
+    cover_image = models.ImageField(
+        upload_to="events/covers/%Y/%m/",
+        validators=(validate_event_image_size,),
+        null=True,
+        blank=True,
+    )
+    cover_alt_text = models.CharField(max_length=250, blank=True)
     location = models.CharField(max_length=255)
+    attendance_label = models.CharField(max_length=100, default="Free")
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
     registration_opens_at = models.DateTimeField(null=True, blank=True)
@@ -68,6 +84,12 @@ class Event(models.Model):
         super().clean()
         self.title = self.title.strip()
         self.location = self.location.strip()
+        self.cover_alt_text = self.cover_alt_text.strip()
+        self.attendance_label = self.attendance_label.strip()
+        if self.cover_image and not self.cover_alt_text:
+            raise ValidationError(
+                {"cover_alt_text": "Alternative text is required."}
+            )
         if self.ends_at <= self.starts_at:
             raise ValidationError(
                 {"ends_at": "The end time must be after the start time."}

@@ -1,22 +1,50 @@
 from django.urls import path
 
 from .views import (
+    AboutPageView,
+    AboutPillarDetailView,
+    AboutPillarListCreateView,
+    DonationOptionDetailView,
+    DonationOptionListCreateView,
+    EventsPageView,
     GalleryCategoryDetailView,
     GalleryCategoryListCreateView,
     GalleryItemDetailView,
     GalleryItemListCreateView,
     GalleryPageSettingsView,
+    GalleryVideoDetailView,
+    GalleryVideoListCreateView,
+    GetInvolvedPageView,
+    HomeFeatureDetailView,
+    HomeFeatureListCreateView,
+    HomePageView,
+    ImpactStatisticDetailView,
+    ImpactStatisticListCreateView,
+    InvolvementFeatureDetailView,
+    InvolvementFeatureListCreateView,
+    InvolvementStepDetailView,
+    InvolvementStepListCreateView,
     NewsArticleDetailView,
     NewsArticleListCreateView,
     NewsCategoryDetailView,
     NewsCategoryListCreateView,
     NewsPageSettingsView,
+    SiteSettingsView,
 )
 
 
 app_name = "content"
 
 urlpatterns = [
+    path("site/", SiteSettingsView.as_view(), name="site_settings"),
+    path("pages/home/", HomePageView.as_view(), name="home_page"),
+    path("pages/about/", AboutPageView.as_view(), name="about_page"),
+    path(
+        "pages/get-involved/",
+        GetInvolvedPageView.as_view(),
+        name="get_involved_page",
+    ),
+    path("pages/events/", EventsPageView.as_view(), name="events_page"),
     path("pages/news/", NewsPageSettingsView.as_view(), name="news_page"),
     path(
         "pages/gallery/",
@@ -58,5 +86,75 @@ urlpatterns = [
         "gallery/<uuid:item_id>/",
         GalleryItemDetailView.as_view(),
         name="gallery_detail",
+    ),
+    path(
+        "gallery/videos/",
+        GalleryVideoListCreateView.as_view(),
+        name="gallery_video_list_create",
+    ),
+    path(
+        "gallery/videos/<uuid:video_id>/",
+        GalleryVideoDetailView.as_view(),
+        name="gallery_video_detail",
+    ),
+    path(
+        "impact-statistics/",
+        ImpactStatisticListCreateView.as_view(),
+        name="impact_statistic_list_create",
+    ),
+    path(
+        "impact-statistics/<uuid:item_id>/",
+        ImpactStatisticDetailView.as_view(),
+        name="impact_statistic_detail",
+    ),
+    path(
+        "home/features/",
+        HomeFeatureListCreateView.as_view(),
+        name="home_feature_list_create",
+    ),
+    path(
+        "home/features/<uuid:item_id>/",
+        HomeFeatureDetailView.as_view(),
+        name="home_feature_detail",
+    ),
+    path(
+        "about/pillars/",
+        AboutPillarListCreateView.as_view(),
+        name="about_pillar_list_create",
+    ),
+    path(
+        "about/pillars/<uuid:item_id>/",
+        AboutPillarDetailView.as_view(),
+        name="about_pillar_detail",
+    ),
+    path(
+        "get-involved/features/",
+        InvolvementFeatureListCreateView.as_view(),
+        name="involvement_feature_list_create",
+    ),
+    path(
+        "get-involved/features/<uuid:item_id>/",
+        InvolvementFeatureDetailView.as_view(),
+        name="involvement_feature_detail",
+    ),
+    path(
+        "get-involved/donation-options/",
+        DonationOptionListCreateView.as_view(),
+        name="donation_option_list_create",
+    ),
+    path(
+        "get-involved/donation-options/<uuid:item_id>/",
+        DonationOptionDetailView.as_view(),
+        name="donation_option_detail",
+    ),
+    path(
+        "get-involved/steps/",
+        InvolvementStepListCreateView.as_view(),
+        name="involvement_step_list_create",
+    ),
+    path(
+        "get-involved/steps/<uuid:item_id>/",
+        InvolvementStepDetailView.as_view(),
+        name="involvement_step_detail",
     ),
 ]
