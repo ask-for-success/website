@@ -581,6 +581,31 @@ class EventApiTests(EventTestDataMixin, APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_scanner_assignment_for_one_event_does_not_grant_other_events(self):
+        first_creation = self.create_event_through_api(title="First Event")
+        first_event = Event.objects.get(pk=first_creation.data["id"])
+        second_creation = self.create_event_through_api(title="Second Event")
+        second_event = Event.objects.get(pk=second_creation.data["id"])
+        second_event_registration = create_event_registration(
+            event=second_event,
+            email="second-event@example.com",
+            answers=self.registration_payload(second_event)["answers"],
+        )
+        EventScanner.objects.create(
+            event=first_event,
+            membership=self.membership,
+            assigned_by=self.content_manager,
+        )
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.post(
+            f"/api/v1/events/{second_event.id}/check-ins/",
+            {"qr_code": second_event_registration.qr_code},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_form_cannot_be_replaced_after_registration(self):
         creation = self.create_event_through_api()
         event = Event.objects.get(pk=creation.data["id"])
