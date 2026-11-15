@@ -57,7 +57,7 @@ Acceptance creates the membership record, but member-area access remains blocked
 
 The member area must provide a profile summary, upcoming events, internal announcements, and events for which the member has check-in permission.
 
-The implemented self-service membership summary is available to the authenticated account before activation so the person can see membership and onboarding state. It exposes explicit onboarding-required and member-access booleans without returning the complete national ID number. Active scanner assignments appear only after membership activation. General upcoming events continue to use the public event API, while internal announcements remain subject to the important-content decision.
+The implemented self-service membership summary is available to the authenticated account before activation so the person can see membership and onboarding state. It exposes explicit onboarding-required and member-access booleans without returning the complete national ID number. Active scanner assignments appear only after membership activation. General upcoming events continue to use the public event API. Internal announcements are explicitly created by content managers and become visible only to active members when their publication time arrives and before any expiration time.
 
 Private messaging, replies to announcements, and automatic management access are outside V1.
 
@@ -88,7 +88,7 @@ V1 must support:
 
 ## Notifications and email
 
-Internal announcements are one-way. Transactional email supports current donation acknowledgements, recruitment decisions, event confirmations, QR delivery, rescheduling, and event cancellation through the configured Django email interface. Password recovery, invitation delivery, production Amazon SES configuration, and delivery retries remain later work. An existing-account acceptance email directs the user to onboarding. A new invited account receives secure account-setup and onboarding instructions. Email failure must never reverse a business decision or delete a stored submission.
+Internal announcements are one-way and do not trigger email in V1. Transactional email supports current donation acknowledgements, recruitment decisions, event confirmations, QR delivery, rescheduling, and event cancellation through the configured Django email interface. Password recovery, invitation delivery, production Amazon SES configuration, and delivery retries remain later work. An existing-account acceptance email directs the user to onboarding. A new invited account receives secure account-setup and onboarding instructions. Email failure must never reverse a business decision or delete a stored submission.
 
 ## Audit
 

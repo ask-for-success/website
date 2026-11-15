@@ -2,8 +2,4 @@
 
 A question remains here only while an answer is required before implementing the related domain. After a decision, remove the question and add the outcome to [DECISIONS.md](../../docs/architecture/DECISIONS.md).
 
-## Content and operations
-
-### Q-014 — Important-content notification
-
-What makes content or an event important enough to create an internal announcement?
+No unresolved V1 product questions remain. New questions must be added here only when an answer is required before implementation.

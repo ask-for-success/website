@@ -14,6 +14,7 @@ from .models import (
     ImpactStatistic,
     InvolvementFeature,
     InvolvementStep,
+    MemberAnnouncement,
     NewsArticle,
     PageSettings,
     SiteSettings,
@@ -61,6 +62,20 @@ class GalleryItemAdmin(admin.ModelAdmin):
     list_filter = ("publication_status", "category")
     search_fields = ("caption", "alt_text")
     ordering = ("display_order", "-published_at")
+
+
+@admin.register(MemberAnnouncement)
+class MemberAnnouncementAdmin(admin.ModelAdmin):
+    list_display = (
+        "title",
+        "published_at",
+        "expires_at",
+        "is_active",
+        "created_by",
+    )
+    list_filter = ("is_active", "published_at", "expires_at")
+    search_fields = ("title", "message")
+    ordering = ("-published_at", "-created_at")
 
 
 admin.site.register(SiteSettings)

@@ -263,6 +263,23 @@ Table news_articles {
   updated_at timestamptz [not null]
 }
 
+Table member_announcements {
+  id uuid [pk, not null]
+  title varchar(200) [not null]
+  message text [not null]
+  event_id uuid [ref: > events.id]
+  article_id uuid [ref: > news_articles.id]
+  published_at timestamptz [not null]
+  expires_at timestamptz
+  is_active boolean [not null, default: true]
+  created_by_id uuid [not null, ref: > users.id]
+  updated_by_id uuid [not null, ref: > users.id]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "At most one of event_id and article_id may be set. Current active records are visible only to active members."
+}
+
 Table gallery_items {
   id uuid [pk, not null]
   category_id uuid [not null, ref: > content_categories.id]

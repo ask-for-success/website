@@ -116,6 +116,25 @@ The accepted publication states are:
 
 Public responses also require an active category. A public request for a hidden article or gallery item returns `404`.
 
+## Internal member announcements
+
+Internal announcements are one-way CMS content for active members. Creating an announcement is the content manager's explicit decision that the information is important for the member area; the backend does not infer importance from an event or article.
+
+Content-manager operations:
+
+- `GET|POST /api/v1/content/announcements/`
+- `GET|PATCH /api/v1/content/announcements/{announcement_id}/`
+
+The management list supports `state`, `search`, `page`, and `page_size`. The accepted derived states are `active`, `scheduled`, `expired`, and `inactive`. Announcements are preserved rather than deleted; a content manager hides one by setting `is_active` to `false`.
+
+Each announcement has a title, message, publication time, optional expiration time, and active state. It may reference one event or one news article, but never both. References are optional because an announcement may contain standalone operational information.
+
+Active members read the current feed through:
+
+- `GET /api/v1/content/member-announcements/`
+
+The feed returns only active announcements whose publication time has arrived and whose expiration time has not passed. Authentication without an active membership is insufficient. Announcements do not send email in V1, and members cannot reply through this API.
+
 ## Image uploads
 
 Create and update requests containing an image use `multipart/form-data`. Each image must be a valid raster image no larger than 10 MB. Alternative text is required so the frontend can provide an accessible experience.

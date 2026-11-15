@@ -197,3 +197,11 @@ After registrations exist, schedule changes use the dedicated reschedule operati
 Permanent event cancellation changes the event state to `cancelled`, cancels every active registration, and invalidates check-in. Participant notification defaults to enabled and explains that the event will no longer occur. For either lifecycle operation, a content manager may deliberately disable notification. Delivery attempts and failures are stored without reversing the business operation.
 
 The content-manager event dashboard exposes paginated registration search, operational filters, stable ordering, aggregate capacity and attendance statistics, and a CSV export containing readable form answers. Confirmation, reschedule, and cancellation delivery attempts share one filterable notification-history API. These administration endpoints do not grant scanner access and remain restricted to content managers.
+
+## D-035 — Explicit internal member announcements
+
+Important content is not inferred from events, news, dates, or categories. A content manager explicitly creates an internal announcement when information belongs in the member area. An announcement contains a title, message, publication time, optional expiration time, and active state. It may optionally reference one event or one news article, but never both.
+
+Only active members may read the current announcement feed. The feed excludes inactive, future, and expired records. Content managers retain a separate management view containing every state and preserve history by deactivating records instead of deleting them.
+
+Announcements are one-way in V1. They do not support replies and do not trigger email. Email delivery may be considered later as a separate notification decision without changing the stored announcement or member-feed contract.

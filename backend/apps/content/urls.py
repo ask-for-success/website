@@ -24,6 +24,9 @@ from .views import (
     InvolvementFeatureListCreateView,
     InvolvementStepDetailView,
     InvolvementStepListCreateView,
+    MemberAnnouncementDetailView,
+    MemberAnnouncementFeedView,
+    MemberAnnouncementListCreateView,
     NewsArticleDetailView,
     NewsArticleListCreateView,
     NewsCategoryDetailView,
@@ -66,6 +69,21 @@ urlpatterns = [
         "news/<slug:article_slug>/",
         NewsArticleDetailView.as_view(),
         name="news_detail",
+    ),
+    path(
+        "announcements/",
+        MemberAnnouncementListCreateView.as_view(),
+        name="announcement_list_create",
+    ),
+    path(
+        "announcements/<uuid:announcement_id>/",
+        MemberAnnouncementDetailView.as_view(),
+        name="announcement_detail",
+    ),
+    path(
+        "member-announcements/",
+        MemberAnnouncementFeedView.as_view(),
+        name="member_announcement_feed",
     ),
     path(
         "gallery/categories/",

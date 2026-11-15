@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, urlparse
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 from django.db.models.functions import Lower
 from django.utils import timezone
 
@@ -258,6 +259,98 @@ class NewsArticle(models.Model):
                     "published_at": (
                         "A publication date is required for scheduled or "
                         "published articles."
+                    )
+                }
+            )
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class MemberAnnouncementQuerySet(models.QuerySet):
+    def visible_to_members(self):
+        now = timezone.now()
+        return self.filter(
+            is_active=True,
+            published_at__lte=now,
+        ).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+
+
+class MemberAnnouncement(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    event = models.ForeignKey(
+        "events.Event",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="member_announcements",
+    )
+    article = models.ForeignKey(
+        NewsArticle,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="member_announcements",
+    )
+    published_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_member_announcements",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="updated_member_announcements",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = MemberAnnouncementQuerySet.as_manager()
+
+    class Meta:
+        db_table = "member_announcements"
+        ordering = ("-published_at", "-created_at")
+        constraints = (
+            models.CheckConstraint(
+                condition=Q(event__isnull=True) | Q(article__isnull=True),
+                name="member_announce_one_ref",
+            ),
+        )
+        indexes = (
+            models.Index(
+                fields=("is_active", "published_at", "expires_at"),
+                name="member_announce_visible_idx",
+            ),
+        )
+
+    def clean(self) -> None:
+        super().clean()
+        self.title = self.title.strip()
+        self.message = self.message.strip()
+        if not self.title:
+            raise ValidationError({"title": "The title cannot be empty."})
+        if not self.message:
+            raise ValidationError({"message": "The message cannot be empty."})
+        if self.event_id and self.article_id:
+            raise ValidationError(
+                {
+                    "article": (
+                        "An announcement can reference an event or a news "
+                        "article, not both."
+                    )
+                }
+            )
+        if self.expires_at and self.expires_at <= self.published_at:
+            raise ValidationError(
+                {
+                    "expires_at": (
+                        "The expiration time must be later than the "
+                        "publication time."
                     )
                 }
             )

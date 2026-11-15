@@ -1,5 +1,6 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import generics, permissions
 
@@ -20,6 +21,7 @@ from .models import (
     ImpactStatistic,
     InvolvementFeature,
     InvolvementStep,
+    MemberAnnouncement,
     NewsArticle,
     PageSettings,
     SiteSettings,
@@ -39,10 +41,12 @@ from .serializers import (
     ImpactStatisticSerializer,
     InvolvementFeatureSerializer,
     InvolvementStepSerializer,
+    MemberAnnouncementSerializer,
     NewsArticleSerializer,
     PageSettingsSerializer,
     SiteSettingsSerializer,
 )
+from .permissions import IsActiveMember
 
 
 CONTENT_FILTER_PARAMETERS = [
@@ -63,6 +67,22 @@ CONTENT_FILTER_PARAMETERS = [
         type=str,
         location=OpenApiParameter.QUERY,
         description="Search textual content.",
+    ),
+]
+
+ANNOUNCEMENT_FILTER_PARAMETERS = [
+    OpenApiParameter(
+        name="state",
+        type=str,
+        location=OpenApiParameter.QUERY,
+        description="Filter by active, scheduled, expired, or inactive state.",
+        enum=("active", "scheduled", "expired", "inactive"),
+    ),
+    OpenApiParameter(
+        name="search",
+        type=str,
+        location=OpenApiParameter.QUERY,
+        description="Search announcement titles and messages.",
     ),
 ]
 
@@ -287,6 +307,140 @@ class NewsArticleDetailView(
     )
     def patch(self, request, *args, **kwargs):
         return super().patch(request, *args, **kwargs)
+
+
+class MemberAnnouncementListCreateView(generics.ListCreateAPIView):
+    serializer_class = MemberAnnouncementSerializer
+    permission_classes = (IsContentManager,)
+    pagination_class = ContentPagination
+    http_method_names = ("get", "post", "head", "options")
+
+    def get_queryset(self):
+        queryset = MemberAnnouncement.objects.select_related(
+            "event",
+            "article",
+            "created_by",
+            "updated_by",
+        )
+        now = timezone.now()
+        state = self.request.query_params.get("state", "").strip().lower()
+        if state == "active":
+            queryset = queryset.filter(
+                is_active=True,
+                published_at__lte=now,
+            ).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+        elif state == "scheduled":
+            queryset = queryset.filter(is_active=True, published_at__gt=now)
+        elif state == "expired":
+            queryset = queryset.filter(is_active=True, expires_at__lte=now)
+        elif state == "inactive":
+            queryset = queryset.filter(is_active=False)
+
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) | Q(message__icontains=search)
+            )
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(
+            created_by=self.request.user,
+            updated_by=self.request.user,
+        )
+
+    @extend_schema(
+        tags=["Member announcements"],
+        summary="List announcements for CMS management",
+        parameters=ANNOUNCEMENT_FILTER_PARAMETERS,
+        responses={
+            200: MemberAnnouncementSerializer,
+            403: OpenApiResponse(description="Content manager access required."),
+        },
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @extend_schema(
+        tags=["Member announcements"],
+        summary="Create a member announcement",
+        responses={
+            201: MemberAnnouncementSerializer,
+            403: OpenApiResponse(description="Content manager access required."),
+        },
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
+
+class MemberAnnouncementDetailView(generics.RetrieveUpdateAPIView):
+    serializer_class = MemberAnnouncementSerializer
+    permission_classes = (IsContentManager,)
+    lookup_url_kwarg = "announcement_id"
+    http_method_names = ("get", "patch", "head", "options")
+
+    def get_queryset(self):
+        return MemberAnnouncement.objects.select_related(
+            "event",
+            "article",
+            "created_by",
+            "updated_by",
+        )
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)
+
+    @extend_schema(
+        tags=["Member announcements"],
+        summary="Get an announcement for CMS management",
+        responses={
+            200: MemberAnnouncementSerializer,
+            403: OpenApiResponse(description="Content manager access required."),
+        },
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @extend_schema(
+        tags=["Member announcements"],
+        summary="Update a member announcement",
+        responses={
+            200: MemberAnnouncementSerializer,
+            403: OpenApiResponse(description="Content manager access required."),
+        },
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+
+class MemberAnnouncementFeedView(generics.ListAPIView):
+    serializer_class = MemberAnnouncementSerializer
+    permission_classes = (IsActiveMember,)
+    pagination_class = ContentPagination
+
+    def get_queryset(self):
+        queryset = MemberAnnouncement.objects.visible_to_members().select_related(
+            "event",
+            "article",
+        )
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) | Q(message__icontains=search)
+            )
+        return queryset
+
+    @extend_schema(
+        tags=["Member announcements"],
+        summary="List announcements visible to the active member",
+        parameters=[ANNOUNCEMENT_FILTER_PARAMETERS[1]],
+        responses={
+            200: MemberAnnouncementSerializer,
+            403: OpenApiResponse(description="Active membership required."),
+        },
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
 
 class GalleryItemListCreateView(

@@ -18,6 +18,7 @@ from .models import (
     ImpactStatistic,
     InvolvementFeature,
     InvolvementStep,
+    MemberAnnouncement,
     NewsArticle,
     PageSettings,
     PublicationStatus,
@@ -189,6 +190,52 @@ class NewsArticleSerializer(
 
     def validate_slug(self, value):
         return value.strip().lower()
+
+
+class MemberAnnouncementSerializer(
+    ModelValidationMixin,
+    serializers.ModelSerializer,
+):
+    event_title = serializers.CharField(source="event.title", read_only=True)
+    article_title = serializers.CharField(source="article.title", read_only=True)
+    article_slug = serializers.CharField(source="article.slug", read_only=True)
+    state = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MemberAnnouncement
+        fields = (
+            "id",
+            "title",
+            "message",
+            "event",
+            "event_title",
+            "article",
+            "article_title",
+            "article_slug",
+            "published_at",
+            "expires_at",
+            "is_active",
+            "state",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = (
+            "id",
+            "state",
+            "created_at",
+            "updated_at",
+        )
+
+    @extend_schema_field(serializers.CharField())
+    def get_state(self, announcement):
+        now = timezone.now()
+        if not announcement.is_active:
+            return "inactive"
+        if announcement.published_at > now:
+            return "scheduled"
+        if announcement.expires_at and announcement.expires_at <= now:
+            return "expired"
+        return "active"
 
 
 class GalleryItemSerializer(

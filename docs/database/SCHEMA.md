@@ -65,6 +65,8 @@ The `content_categories` table stores independent, ordered categories for news a
 
 The `news_articles` table stores the title, case-insensitively unique slug, card excerpt, original Markdown body, cover-image path and alternative text, category, publication state and time, featured state, display order, responsible users, and timestamps. Inline article images are represented by URLs inside the Markdown; their bytes are not stored in PostgreSQL.
 
+The `member_announcements` table stores one-way internal messages created explicitly by content managers. Each record has a publication time, optional expiration time, active state, responsible users, and an optional reference to either one event or one news article. A database constraint prevents referencing both. Visibility is derived at request time, so only current active records are returned to active members. Announcements do not represent email delivery.
+
 The `gallery_items` table stores the image path, alternative text, optional caption, category, publication state and time, display order, responsible users, and timestamps.
 
 The singleton `site_settings`, `home_page_content`, `about_page_content`, `get_involved_page_content`, and `events_page_content` tables store typed copy, CTA links, images, accessible alternative text, contact data, and page-specific headings from the approved designs.

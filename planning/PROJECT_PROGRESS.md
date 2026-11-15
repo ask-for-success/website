@@ -167,6 +167,10 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Add event cover images, attendance labels, and upcoming/past filtering.
 - [x] Keep donation-section instructions and CTA content editable by content managers.
 - [x] Keep footer contact details and social-media links editable by content managers.
+- [x] Add explicit one-way internal announcements managed by content managers.
+- [x] Restrict the current announcement feed to active members.
+- [x] Support scheduled publication, expiration, deactivation, and an optional event-or-article reference.
+- [x] Keep announcement email delivery outside V1.
 - [ ] Confirm the API contract and card ordering with the frontend team.
 - [x] Select organization-owned, self-hosted open-source storage for production files, with SeaweedFS as the planned service.
 - [ ] Deferred: integrate SeaweedFS and production media delivery in the final infrastructure phase.
@@ -226,10 +230,9 @@ Do not install SeaweedFS or change the local development storage during the curr
 
 ## Next engineering task
 
-Validate the completed backend contracts with the frontend team, beginning with events, recruitment, membership, content, and donations. Keep production storage and email-provider integration deferred.
+Validate the completed backend contracts with the frontend team, beginning with events, recruitment, membership, content, member announcements, and donations. Keep production storage and email-provider integration deferred.
 
 ## Next implementation
 
-1. Confirm recruitment, membership, content, donations, events, and organization contracts with the frontend team through Swagger and Postman.
-2. Resolve the remaining important-content notification decision when its product behavior is defined.
-3. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.
+1. Confirm recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger and Postman.
+2. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.

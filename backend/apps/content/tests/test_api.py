@@ -10,6 +10,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
+from apps.events.models import Event
+from apps.memberships.models import Membership, MembershipStatus
 
 from ..models import (
     AboutPage,
@@ -26,6 +28,7 @@ from ..models import (
     ImpactStatistic,
     InvolvementFeature,
     InvolvementStep,
+    MemberAnnouncement,
     NewsArticle,
     PageSettings,
     PublicationStatus,
@@ -75,6 +78,21 @@ class ContentApiTests(APITestCase):
             phone_number="+212600000702",
             password="StrongPassword!2026",
         )
+        Membership.objects.create(
+            user=cls.ordinary_user,
+            status=MembershipStatus.INACTIVE,
+        )
+        cls.active_member_user = User.objects.create_user(
+            email="active-member@example.com",
+            first_name="Active",
+            last_name="Member",
+            phone_number="+212600000703",
+            password="StrongPassword!2026",
+        )
+        Membership.objects.create(
+            user=cls.active_member_user,
+            status=MembershipStatus.ACTIVE,
+        )
         cls.news_category = ContentCategory.objects.get(
             section=ContentSection.NEWS,
             slug="events",
@@ -120,6 +138,18 @@ class ContentApiTests(APITestCase):
         }
         payload.update(overrides)
         return payload
+
+    def create_event(self, title="Member event"):
+        starts_at = timezone.now() + timedelta(days=7)
+        return Event.objects.create(
+            title=title,
+            summary="An event for members.",
+            description="Complete event information.",
+            location="Casablanca",
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(hours=2),
+            created_by=self.content_manager,
+        )
 
     def test_initial_page_settings_and_categories_match_the_design(self):
         news_page = PageSettings.objects.get(section=ContentSection.NEWS)
@@ -311,6 +341,18 @@ class ContentApiTests(APITestCase):
         self.assertIn("/api/v1/content/pages/events/", response.data["paths"])
         self.assertIn(
             "/api/v1/content/gallery/videos/",
+            response.data["paths"],
+        )
+        self.assertIn(
+            "/api/v1/content/announcements/",
+            response.data["paths"],
+        )
+        self.assertIn(
+            "/api/v1/content/announcements/{announcement_id}/",
+            response.data["paths"],
+        )
+        self.assertIn(
+            "/api/v1/content/member-announcements/",
             response.data["paths"],
         )
 
@@ -532,3 +574,166 @@ class ContentApiTests(APITestCase):
         self.assertEqual(len(response.data["donation_options"]), 2)
         self.assertEqual(len(response.data["steps"]), 4)
         self.assertEqual(response.data["steps"][0]["display_order"], 1)
+
+    def test_content_manager_can_create_member_announcement(self):
+        self.client.force_authenticate(self.content_manager)
+
+        response = self.client.post(
+            "/api/v1/content/announcements/",
+            {
+                "title": "Monthly member meeting",
+                "message": "The member meeting starts at 18:00.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["state"], "active")
+        announcement = MemberAnnouncement.objects.get(id=response.data["id"])
+        self.assertEqual(announcement.created_by, self.content_manager)
+        self.assertEqual(announcement.updated_by, self.content_manager)
+
+    def test_announcement_can_reference_an_event(self):
+        event = self.create_event()
+        self.client.force_authenticate(self.content_manager)
+
+        response = self.client.post(
+            "/api/v1/content/announcements/",
+            {
+                "title": "Registration is open",
+                "message": "Members can now register for this event.",
+                "event": str(event.id),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(str(response.data["event"]), str(event.id))
+        self.assertEqual(response.data["event_title"], event.title)
+        self.assertIsNone(response.data["article"])
+
+    def test_announcement_rejects_event_and_article_together(self):
+        event = self.create_event()
+        article = self.create_article(
+            "Member news",
+            PublicationStatus.PUBLISHED,
+            timezone.now(),
+        )
+        self.client.force_authenticate(self.content_manager)
+
+        response = self.client.post(
+            "/api/v1/content/announcements/",
+            {
+                "title": "Ambiguous reference",
+                "message": "This must reference only one content item.",
+                "event": str(event.id),
+                "article": str(article.id),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("article", response.data)
+
+    def test_announcement_rejects_expiration_before_publication(self):
+        self.client.force_authenticate(self.content_manager)
+        publication_time = timezone.now() + timedelta(days=2)
+
+        response = self.client.post(
+            "/api/v1/content/announcements/",
+            {
+                "title": "Invalid schedule",
+                "message": "The expiration cannot precede publication.",
+                "published_at": publication_time.isoformat(),
+                "expires_at": (publication_time - timedelta(hours=1)).isoformat(),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("expires_at", response.data)
+
+    def test_active_member_feed_only_returns_current_announcements(self):
+        now = timezone.now()
+        current = MemberAnnouncement.objects.create(
+            title="Current announcement",
+            message="Visible to active members.",
+            published_at=now - timedelta(minutes=1),
+            expires_at=now + timedelta(days=1),
+            created_by=self.content_manager,
+            updated_by=self.content_manager,
+        )
+        MemberAnnouncement.objects.create(
+            title="Scheduled announcement",
+            message="Not visible yet.",
+            published_at=now + timedelta(days=1),
+            created_by=self.content_manager,
+            updated_by=self.content_manager,
+        )
+        MemberAnnouncement.objects.create(
+            title="Expired announcement",
+            message="No longer visible.",
+            published_at=now - timedelta(days=2),
+            expires_at=now - timedelta(days=1),
+            created_by=self.content_manager,
+            updated_by=self.content_manager,
+        )
+        MemberAnnouncement.objects.create(
+            title="Inactive announcement",
+            message="Manually hidden.",
+            published_at=now - timedelta(minutes=1),
+            is_active=False,
+            created_by=self.content_manager,
+            updated_by=self.content_manager,
+        )
+        self.client.force_authenticate(self.active_member_user)
+
+        response = self.client.get("/api/v1/content/member-announcements/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["id"], str(current.id))
+
+    def test_inactive_member_cannot_access_member_announcement_feed(self):
+        self.client.force_authenticate(self.ordinary_user)
+
+        response = self.client.get("/api/v1/content/member-announcements/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_content_manager_can_filter_search_and_update_announcements(self):
+        now = timezone.now()
+        scheduled = MemberAnnouncement.objects.create(
+            title="Scheduled training",
+            message="A training announcement for members.",
+            published_at=now + timedelta(days=1),
+            created_by=self.content_manager,
+            updated_by=self.content_manager,
+        )
+        MemberAnnouncement.objects.create(
+            title="Different topic",
+            message="This item should not match the search.",
+            published_at=now - timedelta(minutes=1),
+            created_by=self.content_manager,
+            updated_by=self.content_manager,
+        )
+        self.client.force_authenticate(self.content_manager)
+
+        list_response = self.client.get(
+            "/api/v1/content/announcements/",
+            {"state": "scheduled", "search": "training"},
+        )
+        update_response = self.client.patch(
+            f"/api/v1/content/announcements/{scheduled.id}/",
+            {"is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data["count"], 1)
+        self.assertEqual(
+            list_response.data["results"][0]["id"],
+            str(scheduled.id),
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(update_response.data["state"], "inactive")
