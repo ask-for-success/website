@@ -155,6 +155,13 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
         fields = ("first_name", "last_name", "phone_number")
         extra_kwargs = {"phone_number": {"validators": []}}
 
+    def validate(self, data):
+        if "email" in self.initial_data:
+            raise serializers.ValidationError(
+                {"email": "The login email cannot be changed."}
+            )
+        return data
+
     def validate_phone_number(self, value: str) -> str:
         value = value.strip()
         duplicate = User.objects.filter(phone_number=value).exclude(id=self.instance.id)

@@ -140,6 +140,21 @@ class AuthenticationApiTests(APITestCase):
         self.assertEqual(response.data["first_name"], "Updated name")
         self.assertEqual(response.data["phone_number"], "+212600000009")
 
+    def test_profile_update_rejects_login_email_change(self):
+        registration = self.register()
+        self.authorize(registration.data["access_token"])
+
+        response = self.client.patch(
+            self.me_url,
+            {"email": "changed@example.com"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
+        user = User.objects.get(id=registration.data["user"]["id"])
+        self.assertEqual(user.email, "person@example.com")
+
     def test_refresh_rotates_tokens_and_revokes_previous_refresh_token(self):
         registration = self.register()
         old_refresh_token = registration.data["refresh_token"]

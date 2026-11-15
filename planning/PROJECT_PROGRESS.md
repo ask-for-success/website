@@ -31,6 +31,7 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Registration and login.
 - [x] Complete token lifecycle.
 - [x] Current-user profile read and update.
+- [x] Keep the login email immutable after account creation.
 - [x] Password change and session revocation.
 - [x] Automated tests.
 - [x] Swagger, ReDoc, and OpenAPI validation.

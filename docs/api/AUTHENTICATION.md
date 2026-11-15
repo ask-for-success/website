@@ -41,7 +41,7 @@ In Swagger, click **Authorize** and paste only the access token. Swagger adds th
 - Email comparison is case-insensitive.
 - An inactive account cannot log in.
 - Public registration never grants administrative access.
-- Users cannot change their email yet.
+- Users cannot change their login email.
 
 ## Manual testing
 

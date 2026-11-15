@@ -16,7 +16,7 @@ Docker Compose provides Django and PostgreSQL. Additional infrastructure is intr
 
 ## D-004 — User identity
 
-Every user has an immutable UUID. Email is the login identifier, but it is not the database identifier.
+Every user has an immutable UUID. Email is the login identifier, but it is not the database identifier. A user cannot change the login email after account creation.
 
 ## D-005 — One account model
 
