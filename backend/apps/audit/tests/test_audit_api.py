@@ -289,3 +289,98 @@ class AuditApiTests(APITestCase):
             "/api/v1/audit/records/{record_id}/",
             response.data["paths"],
         )
+        self.assertIn("/api/v1/audit/actors/", response.data["paths"])
+        self.assertIn(
+            "/api/v1/audit/actors/{actor_id}/records/",
+            response.data["paths"],
+        )
+
+    def test_actor_search_supports_name_email_and_uuid(self):
+        self.client.force_authenticate(self.ordinary_user)
+        update_response = self.client.patch(
+            "/api/v1/auth/me/",
+            {"first_name": "Activity", "last_name": "Reviewer"},
+            format="json",
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(self.account_administrator)
+        searches = (
+            "Activity Reviewer",
+            self.ordinary_user.email,
+            str(self.ordinary_user.id),
+        )
+        for search in searches:
+            response = self.client.get(
+                "/api/v1/audit/actors/",
+                {"search": search},
+            )
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data["count"], 1)
+            self.assertEqual(
+                response.data["results"][0]["id"],
+                str(self.ordinary_user.id),
+            )
+            self.assertEqual(
+                response.data["results"][0]["audit_record_count"],
+                1,
+            )
+
+    def test_actor_timeline_contains_cross_domain_mutations(self):
+        self.client.force_authenticate(self.hr_manager)
+        content_response = self.client.patch(
+            "/api/v1/content/site/",
+            {"tagline": "Audited content update"},
+            format="json",
+        )
+        self.assertEqual(content_response.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(self.account_administrator)
+        timeline_response = self.client.get(
+            f"/api/v1/audit/actors/{self.hr_manager.id}/records/"
+        )
+
+        self.assertEqual(timeline_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(timeline_response.data["count"], 1)
+        record = timeline_response.data["results"][0]
+        self.assertEqual(record["domain"], AuditDomain.CONTENT)
+        self.assertEqual(record["action"], AuditAction.API_UPDATED)
+        self.assertEqual(record["operation"], "content:site_settings")
+        self.assertEqual(record["request_method"], "PATCH")
+        self.assertEqual(record["request_path"], "/api/v1/content/site/")
+
+    def test_failed_mutation_does_not_create_activity_record(self):
+        self.client.force_authenticate(self.ordinary_user)
+
+        response = self.client.patch(
+            "/api/v1/auth/me/",
+            {"phone_number": self.candidate.phone_number},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(
+            AuditRecord.objects.filter(actor=self.ordinary_user).exists()
+        )
+
+    def test_successful_login_is_recorded_without_password_or_token_data(self):
+        self.client.force_authenticate(user=None)
+
+        response = self.client.post(
+            "/api/v1/auth/login/",
+            {
+                "email": self.ordinary_user.email,
+                "password": "StrongPassword!2026",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        record = AuditRecord.objects.get(
+            actor=self.ordinary_user,
+            action=AuditAction.ACCOUNT_LOGIN,
+        )
+        self.assertEqual(record.target_type, "user")
+        self.assertEqual(record.target_id, self.ordinary_user.id)
+        self.assertEqual(record.previous_state, {})
+        self.assertEqual(record.new_state, {})

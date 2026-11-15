@@ -53,7 +53,3 @@ What makes content or an event important enough to create an internal announceme
 ### Q-015 — Donations
 
 Are donation-intent records part of V1?
-
-### Q-016 — CMS audit coverage
-
-Must every publication and archive action be audited in V1?

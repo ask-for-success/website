@@ -1,6 +1,6 @@
 # Audit API
 
-The audit API exposes immutable records for sensitive recruitment and membership operations. It is read-only and is intended for the operational administration dashboard.
+The audit API exposes immutable actor-centered activity records across the backend. It is read-only and is intended for the operational administration dashboard.
 
 ## Authorization
 
@@ -8,16 +8,20 @@ Only an authenticated user with `accounts.view_audit_log` can access audit recor
 
 ## Endpoints
 
+- `GET /api/v1/audit/actors/?search={name, email, or UUID}`
+- `GET /api/v1/audit/actors/{actor_id}/records/`
 - `GET /api/v1/audit/records/`
 - `GET /api/v1/audit/records/{record_id}/`
 
 Create, update, and delete operations are not available. The Django administration representation is also read-only.
 
+The actor search response includes the account identity, global roles, effective system permissions, current membership summary when present, audit-record count, and last recorded activity. The actor timeline returns every recorded action performed by that account.
+
 ## Filters
 
 The record list accepts:
 
-- `domain`: `recruitment` or `membership`;
+- `domain`: `accounts`, `access_control`, `organization`, `content`, `events`, `recruitment`, or `membership`;
 - `action`: an exact action identifier;
 - `actor_id`: the UUID of the user who performed the action;
 - `application_id`: a recruitment application UUID;
@@ -30,6 +34,8 @@ The record list accepts:
 
 The current implementation records:
 
+- account registration and successful login;
+- successful authenticated create, update, delete, and action requests across account management, access control, organization, CMS, events, recruitment, and membership APIs;
 - every recruitment application status change;
 - membership creation and reactivation;
 - onboarding status changes;
@@ -39,9 +45,11 @@ The current implementation records:
 
 Acceptance records correlate the recruitment application and the membership created or reactivated by the same transaction.
 
+Failed requests are not recorded as completed actions. Ordinary read-only page and list requests are intentionally excluded to prevent routine browsing from overwhelming the operational log. Sensitive read auditing, such as future national ID access, must be added explicitly when that data is implemented.
+
 ## Stored data
 
-Each record contains its domain, action, actor, related application or membership, previous state, new state, optional reason, and timestamp. State snapshots use only approved status and assignment identifiers.
+Each record contains its domain, action, actor, target type and identifier, normalized API operation, HTTP method, request path without query parameters, related application or membership when applicable, previous state, new state, optional reason, and timestamp. State snapshots use only approved status and assignment identifiers.
 
 Audit records never contain passwords, password hashes, invitation tokens, token hashes, CV files or contents, national ID values, or arbitrary request payloads. Unsupported state fields are rejected by model validation.
 

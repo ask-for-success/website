@@ -139,3 +139,11 @@ Sensitive recruitment and membership operations create audit records inside the 
 Records contain an approved action, actor, timestamp, related application or membership, allowlisted previous and new state, and an optional reason. They never contain passwords, tokens, CV contents, national ID values, or complete request payloads. Audit records cannot be created, updated, or deleted through the API and are read-only in Django administration.
 
 The global audit log is visible only to users with `accounts.view_audit_log`, which is included in the `account_administrator` role. HR-authorized content managers create audit history through their business operations but do not automatically receive global audit-log access.
+
+## D-028 — Actor-centered cross-domain activity
+
+An account administrator can search accounts by UUID, email, first name, last name, or full name and open the complete recorded timeline for one actor. Search results also identify the actor's global roles, effective permissions, current membership summary, activity count, and last activity time.
+
+Successful authenticated mutations across account management, access control, organization, CMS, events, recruitment, and membership APIs are audited in the same outer database transaction as the request. Failed mutations are not recorded as completed actions. Account registration and successful login are explicitly recorded without credentials or tokens.
+
+Routine read-only browsing is excluded to keep the log operationally useful. Sensitive reads must be explicitly audited when introduced. Request bodies, query parameters, passwords, tokens, CV contents, and national ID values are never copied into general activity records.

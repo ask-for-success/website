@@ -175,8 +175,12 @@ Do not install SeaweedFS or change the local development storage during the curr
 - [x] Reject secrets, CV contents, national ID values, and arbitrary request fields from state snapshots.
 - [x] Restrict the read-only audit API to `accounts.view_audit_log`.
 - [x] Add filtering, pagination, Swagger, database documentation, and automated tests.
+- [x] Record successful authenticated mutations across accounts, access control, organization, CMS, events, recruitment, and membership APIs.
+- [x] Record account registration and successful login without credentials or tokens.
+- [x] Exclude failed mutations and routine read-only browsing from completed activity.
+- [x] Search actors by UUID, email, first name, last name, or full name.
+- [x] Add an actor timeline with roles, permissions, membership summary, activity count, and last activity time.
 - [ ] Confirm the audit-list contract with the administration frontend.
-- [ ] Decide whether CMS publication and archive actions belong in the V1 audit trail.
 
 ## Next engineering task
 

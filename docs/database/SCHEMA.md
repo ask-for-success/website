@@ -83,9 +83,9 @@ The `application_cvs` table stores one CV metadata record per application: priva
 
 ## Audit records
 
-The `audit_records` table stores immutable recruitment and membership history. Each record contains a domain, approved action, actor, related application or membership, allowlisted previous and new state snapshots, optional reason, and creation time.
+The `audit_records` table stores immutable actor-centered activity across accounts, access control, organization, CMS, events, recruitment, and memberships. Each record contains a domain, approved action, actor, generic target type and optional UUID, normalized API operation, HTTP method, path without query parameters, related application or membership when applicable, allowlisted previous and new state snapshots, optional reason, and creation time.
 
-At least one business target is required. Recruitment records require an application, and membership records require a membership. Acceptance can reference both so the decision and resulting membership change remain correlated.
+At least one business target is required through a generic target, application, or membership. Application-decision records require an application, and membership-lifecycle records require a membership. Acceptance can reference both so the decision and resulting membership change remain correlated.
 
 Audit state snapshots accept only status, department, position, and assignment identifiers. Passwords, tokens, CV contents, national ID values, and arbitrary request payloads are structurally excluded. Business targets and actors use protected foreign keys so their audit history cannot be removed accidentally.
 

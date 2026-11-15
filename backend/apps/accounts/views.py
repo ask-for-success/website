@@ -3,6 +3,9 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.audit.models import AuditAction, AuditDomain
+from apps.audit.services import record_audit_event
+
 from .serializers import (
     AuthResponseSerializer,
     ChangePasswordSerializer,
@@ -37,6 +40,16 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        record_audit_event(
+            domain=AuditDomain.ACCOUNTS,
+            action=AuditAction.ACCOUNT_REGISTERED,
+            actor=user,
+            target_type="user",
+            target_id=user.id,
+            operation="accounts:register",
+            request_method="POST",
+            request_path=request.path,
+        )
         return Response(build_auth_response(user), status=status.HTTP_201_CREATED)
 
 
@@ -62,7 +75,18 @@ class LoginView(APIView):
             context={"request": request},
         )
         serializer.is_valid(raise_exception=True)
-        return Response(build_auth_response(serializer.validated_data["user"]))
+        user = serializer.validated_data["user"]
+        record_audit_event(
+            domain=AuditDomain.ACCOUNTS,
+            action=AuditAction.ACCOUNT_LOGIN,
+            actor=user,
+            target_type="user",
+            target_id=user.id,
+            operation="accounts:login",
+            request_method="POST",
+            request_path=request.path,
+        )
+        return Response(build_auth_response(user))
 
 
 class RefreshView(APIView):

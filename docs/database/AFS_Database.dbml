@@ -577,10 +577,15 @@ Table audit_records {
   actor_id uuid [not null, ref: > users.id]
   application_id uuid [ref: > recruitment_applications.id]
   membership_id uuid [ref: > memberships.id]
+  target_type varchar(150) [not null, default: ""]
+  target_id uuid
+  operation varchar(180) [not null, default: ""]
+  request_method varchar(8) [not null, default: ""]
+  request_path varchar(500) [not null, default: "", note: "Path only; query parameters and request bodies are not stored"]
   previous_state jsonb [not null, default: `{}`]
   new_state jsonb [not null, default: `{}`]
   reason text [not null, default: ""]
   created_at timestamptz [not null]
 
-  Note: "Immutable audit history. At least one business target is required. State keys are allowlisted and secrets are prohibited."
+  Note: "Immutable actor-centered history. At least one generic or relational business target is required. State keys are allowlisted and secrets are prohibited."
 }
