@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "storages",
     "rest_framework_simplejwt.token_blacklist",
     "apps.accounts",
+    "apps.administration",
     "apps.memberships",
     "apps.events",
     "apps.content",

@@ -28,6 +28,7 @@ urlpatterns = [
         "api/v1/account-management/",
         include("apps.accounts.management_urls"),
     ),
+    path("api/v1/administration/", include("apps.administration.urls")),
     path("api/v1/memberships/", include("apps.memberships.urls")),
     path("api/v1/organization/", include("apps.organization.urls")),
     path("api/v1/events/", include("apps.events.urls")),

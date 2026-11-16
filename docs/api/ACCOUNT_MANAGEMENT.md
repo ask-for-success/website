@@ -28,6 +28,30 @@ Role and permission assignment remains available through:
 - `GET /api/v1/access/users/{user_id}/`
 - `PUT /api/v1/access/users/{user_id}/`
 
+The global dashboard overview is available through:
+
+- `GET /api/v1/administration/overview/`
+
+## Global administration overview
+
+The overview endpoint is restricted to account administrators and returns one
+read-only snapshot containing:
+
+- total, active, and inactive accounts;
+- active account-administrator, content-manager, and HR-manager counts;
+- membership totals grouped by lifecycle status;
+- recruitment-opportunity totals and applications grouped by status;
+- upcoming and cancelled events, registrations, cancellations, and check-ins;
+- news, gallery-item, and gallery-video totals grouped by publication status;
+- current member-announcement totals;
+- total and last-thirty-day donation-submission counts;
+- the last-thirty-day audit count and ten most recent sanitized audit records.
+
+The response contains no CV data, national ID values, credentials, raw tokens,
+donor contact details, event-participant contact details, or private file URLs.
+The activity window is fixed at thirty days in V1 so every administration client
+displays the same operational definition.
+
 ## Creating a content manager
 
 The administrator supplies first name, last name, immutable login email, unique

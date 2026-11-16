@@ -233,6 +233,7 @@ Storage behavior is documented in the [file storage guide](../docs/development/S
 ## Administration and audit
 
 - [x] Add paginated administrator account search and active-state and role filters.
+- [x] Add an account-administrator-only global overview with cross-domain totals and recent sanitized activity.
 - [x] Add invitation-based content-manager account creation with optional HR access.
 - [x] Add secure account deactivation with a required reason, token revocation, password invalidation, and access removal.
 - [x] Add invitation-based reactivation without automatic privilege restoration.

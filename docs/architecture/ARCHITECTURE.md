@@ -19,6 +19,11 @@ Docker Compose starts PostgreSQL, SeaweedFS, an idempotent storage-initializatio
 
 The `accounts` Django application owns the user model and authentication. Each future business domain receives its own Django application only after its models, rules, and permissions are approved.
 
+The `administration` application owns no business tables. It provides a
+read-only account-administrator overview by aggregating current values from the
+accounts, membership, recruitment, events, content, donations, and audit
+domains. Every underlying record remains owned and changed only by its domain.
+
 Public visitors and public event participants do not need an account. All other account types share the same authentication mechanism; business authorization is handled separately.
 
 ## Technical sources of truth

@@ -233,3 +233,18 @@ An administrator cannot deactivate their own account, and superusers remain
 outside the operational account-management API. Roles removed during
 deactivation are not restored automatically. Invitation creation and acceptance,
 deactivation, and access changes are recorded in the immutable audit trail.
+
+## D-038 — Read-only global administration overview
+
+The administration dashboard reads one account-administrator-only overview
+endpoint for current cross-domain totals. It includes account and role counts,
+membership and recruitment status counts, event attendance totals, CMS
+publication totals, donation-submission counts, and recent sanitized audit
+activity.
+
+The endpoint is operational reporting, not a second source of business state.
+Every value is calculated from the owning domain's current records. The V1
+activity window is fixed at thirty days and recent activity is limited to ten
+records. The response never includes national ID values, CV contents, private
+file URLs, credentials, raw tokens, donor contact details, or event-participant
+contact details.

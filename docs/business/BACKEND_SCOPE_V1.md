@@ -12,7 +12,7 @@ This document is the single description of planned V1 backend functionality. Imp
 | Content manager | Manage explicitly authorized CMS domains. |
 | HR-authorized content manager | Process recruitment and official member records when individually granted HR permission. |
 | Check-in agent | Record attendance only for assigned events. |
-| Administrator | Manage accounts, groups, permissions, and access assignments. |
+| Administrator | Manage accounts, groups, permissions, and access assignments; review the global operational overview and audit activity. |
 
 ## Accounts and authentication
 
