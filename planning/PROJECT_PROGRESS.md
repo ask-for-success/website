@@ -6,7 +6,7 @@ This file records delivery status without duplicating requirements, database mod
 
 ## Current position
 
-- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, the complete event registration lifecycle, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, immutable cross-domain audit records, self-hosted SeaweedFS integration, and the Amazon SES production configuration boundary.
+- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, the complete event registration lifecycle, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, immutable cross-domain audit records, self-hosted SeaweedFS integration, the Amazon SES production configuration boundary, and isolated cross-domain backend acceptance coverage.
 - **Under review:** global roles, permissions, authentication behavior, and frontend contracts.
 - **In progress:** organization, membership, invitations, onboarding, recruitment frontend validation, and CMS frontend validation.
 - **Deferred to the final infrastructure phase:** Amazon SES credentials and live email validation, plus production storage hardening.
@@ -243,13 +243,23 @@ The implementation source of truth is the [file storage guide](../docs/developme
 - [x] Add an actor timeline with roles, permissions, membership summary, activity count, and last activity time.
 - [ ] Confirm the audit-list contract with the administration frontend.
 
+## Backend acceptance
+
+- [x] Cover public organization reference data through the HTTP API.
+- [x] Cover registration, recruitment, offer acceptance, onboarding, active membership, protected identity access, private CV storage, email delivery, and audit traceability as one journey.
+- [x] Cover CMS publication, public image retrieval, event creation, public registration, QR delivery, event-specific scanner assignment, check-in, statistics, and audit traceability as one journey.
+- [x] Cover public donation interest, acknowledgement email, protected manager access, editable footer settings, and audit traceability as one journey.
+- [x] Use JWT authentication for authenticated acceptance actors.
+- [x] Keep acceptance files and messages isolated from development SeaweedFS and Amazon SES.
+- [x] Run the acceptance suite successfully in Docker.
+
 ## Next engineering task
 
-Build backend-owned end-to-end acceptance coverage across the completed authentication, organization, membership, recruitment, CMS, donations, events, audit, storage, and email boundaries while the frontend remains in static development.
+Confirm the completed API contracts with the frontend team through Swagger, then begin production hardening after the off-host backup destination and deployment environment are approved.
 
 ## Next implementation
 
-1. Build backend-owned end-to-end acceptance coverage while the frontend remains in static development.
-2. Confirm recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger.
+1. Confirm recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger.
+2. Approve an association-controlled off-host backup destination and the production deployment environment.
 3. Finish production hardening: HTTPS media delivery, secret management, backup and restore, storage monitoring, live SES validation, and email reputation monitoring.
 4. Update and run the complete Postman acceptance collection last.

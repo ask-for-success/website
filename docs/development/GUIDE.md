@@ -38,12 +38,24 @@ After connecting, open **Databases -> afs -> Schemas -> public -> Tables**. Djan
 # Tests for the currently implemented domain
 docker compose run --rm backend python manage.py test apps.accounts.tests
 
+# Cross-domain backend acceptance journeys
+docker compose run --rm backend python manage.py test tests.acceptance
+
+# Complete automated backend suite
+docker compose run --rm backend python manage.py test
+
 # Migration consistency
 docker compose run --rm backend python manage.py makemigrations --check --dry-run
 
 # OpenAPI contract validity
 docker compose run --rm backend python manage.py spectacular --validate
 ```
+
+The cross-domain acceptance suite uses temporary filesystem storage and Django's
+in-memory email backend. It verifies file and email behavior without writing to
+the development SeaweedFS buckets or contacting Amazon SES. Live SeaweedFS and
+SES checks remain deployment validations and are not part of the isolated test
+suite.
 
 ## Feature organization
 
