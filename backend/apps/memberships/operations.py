@@ -2,9 +2,12 @@ import hashlib
 import secrets
 from dataclasses import dataclass
 from datetime import timedelta
+from urllib.parse import quote
 
+from django.conf import settings
 from django.contrib.auth import password_validation
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.mail import EmailMessage
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -17,6 +20,7 @@ from apps.organization.models import Department, Position
 from .models import (
     MemberAssignment,
     MemberIdentity,
+    InvitationEmailStatus,
     Membership,
     MembershipInvitation,
     MembershipInvitationStatus,
@@ -37,6 +41,73 @@ class MembershipInvitationResult:
 
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def build_membership_invitation_setup_link(setup_token: str) -> str:
+    token = quote(setup_token, safe="")
+    base_url = settings.PUBLIC_WEB_URL.rstrip("/")
+    return f"{base_url}/membership/invitation/setup?token={token}"
+
+
+def send_membership_invitation_email(
+    result: MembershipInvitationResult,
+) -> None:
+    invitation = result.invitation
+    assignment = invitation.membership.assignments.select_related(
+        "department",
+        "position",
+    ).get(ends_at__isnull=True)
+    setup_link = build_membership_invitation_setup_link(result.setup_token)
+    expires_at = timezone.localtime(invitation.expires_at).strftime(
+        "%A, %d %B %Y at %H:%M %Z"
+    )
+
+    try:
+        message = EmailMessage(
+            subject="Set up your Ask For Success member account",
+            body=(
+                f"Hello {invitation.user.first_name},\n\n"
+                "You have been invited to join Ask For Success as "
+                f"{assignment.position.name} in the "
+                f"{assignment.department.name} department.\n\n"
+                "Set up your account using this secure link:\n"
+                f"{setup_link}\n\n"
+                f"This link expires on {expires_at}. After account setup, "
+                "log in and complete the required membership onboarding.\n\n"
+                "If you did not expect this invitation, you can ignore this "
+                "email."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[invitation.user.email],
+        )
+        sent_count = message.send(fail_silently=False)
+        if sent_count != 1:
+            raise RuntimeError("The email service did not confirm delivery.")
+    except Exception as error:
+        invitation.email_delivery_status = InvitationEmailStatus.FAILED
+        invitation.email_sent_at = None
+        invitation.email_error = str(error)[:2000]
+        invitation.save(
+            update_fields=(
+                "email_delivery_status",
+                "email_sent_at",
+                "email_error",
+                "updated_at",
+            )
+        )
+        return
+
+    invitation.email_delivery_status = InvitationEmailStatus.SENT
+    invitation.email_sent_at = timezone.now()
+    invitation.email_error = ""
+    invitation.save(
+        update_fields=(
+            "email_delivery_status",
+            "email_sent_at",
+            "email_error",
+            "updated_at",
+        )
+    )
 
 
 def ensure_hr_manager(user) -> None:

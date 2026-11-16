@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -19,6 +20,7 @@ from .models import (
     MembershipStatus,
     OnboardingStatus,
 )
+from .operations import send_membership_invitation_email
 from .serializers import (
     ExistingAccountAdmissionSerializer,
     MemberDepartureSerializer,
@@ -398,9 +400,11 @@ class MembershipInvitationCreateView(APIView):
         summary="Invite an already accepted member",
         description=(
             "Creates an inactive account, membership, initial assignment, and "
-            "single-use setup token valid for forty-eight hours. The operation "
-            "requires a content manager with HR permission. The raw token is "
-            "returned once for testing until email delivery is connected."
+            "single-use setup token valid for forty-eight hours, then sends the "
+            "secure account-setup link by email. The operation requires a content "
+            "manager with HR permission. Email failure is recorded without "
+            "rolling back the invitation. The raw token is returned only while "
+            "the server is running in development mode."
         ),
         request=MembershipInvitationCreateSerializer,
         responses={
@@ -417,12 +421,20 @@ class MembershipInvitationCreateView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         result = serializer.save()
+        send_membership_invitation_email(result)
+        result.invitation.refresh_from_db()
         response_data = {
             "invitation_id": result.invitation.id,
             "email": result.invitation.user.email,
             "expires_at": result.invitation.expires_at,
-            "setup_token": result.setup_token,
+            "email_delivery_status": (
+                result.invitation.email_delivery_status
+            ),
+            "email_sent_at": result.invitation.email_sent_at,
+            "email_error": result.invitation.email_error,
         }
+        if settings.DEBUG:
+            response_data["setup_token"] = result.setup_token
         return Response(
             MembershipInvitationResultSerializer(response_data).data,
             status=status.HTTP_201_CREATED,

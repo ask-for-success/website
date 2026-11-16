@@ -205,3 +205,11 @@ Important content is not inferred from events, news, dates, or categories. A con
 Only active members may read the current announcement feed. The feed excludes inactive, future, and expired records. Content managers retain a separate management view containing every state and preserve history by deactivating records instead of deleting them.
 
 Announcements are one-way in V1. They do not support replies and do not trigger email. Email delivery may be considered later as a separate notification decision without changing the stored announcement or member-feed contract.
+
+## D-036 — Membership invitation delivery
+
+Creating a membership invitation automatically attempts to email the invited person a secure account-setup link. The link uses the configured public frontend origin, carries the one-time raw token, and expires with the invitation after forty-eight hours. PostgreSQL continues to store only the token hash.
+
+The invitation is the business record and email is only its delivery channel. A delivery failure is stored as `failed` with a bounded error and never rolls back the inactive account, pending membership, initial assignment, onboarding record, or active invitation. Successful delivery records its sent time. Automatic retry remains outside V1.
+
+The creation response exposes the raw setup token only while Django `DEBUG` is enabled for local development and testing. Production responses omit the field completely. Amazon SES will replace the development email backend during the final infrastructure phase without changing the invitation API or business operation.

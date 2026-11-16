@@ -88,7 +88,7 @@ V1 must support:
 
 ## Notifications and email
 
-Internal announcements are one-way and do not trigger email in V1. Transactional email supports current donation acknowledgements, recruitment decisions, event confirmations, QR delivery, rescheduling, and event cancellation through the configured Django email interface. Password recovery, invitation delivery, production Amazon SES configuration, and delivery retries remain later work. An existing-account acceptance email directs the user to onboarding. A new invited account receives secure account-setup and onboarding instructions. Email failure must never reverse a business decision or delete a stored submission.
+Internal announcements are one-way and do not trigger email in V1. Transactional email supports membership invitations, donation acknowledgements, recruitment decisions, event confirmations, QR delivery, rescheduling, and event cancellation through the configured Django email interface. Password recovery, production Amazon SES configuration, and delivery retries remain later work. An existing-account acceptance email directs the user to onboarding. A new invited account receives secure account-setup and onboarding instructions. Email failure must never reverse a business decision or delete a stored submission.
 
 ## Audit
 

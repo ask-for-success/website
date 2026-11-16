@@ -28,6 +28,12 @@ class MembershipInvitationStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelled"
 
 
+class InvitationEmailStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    SENT = "sent", "Sent"
+    FAILED = "failed", "Failed"
+
+
 class Membership(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(
@@ -139,6 +145,13 @@ class MembershipInvitation(models.Model):
     expires_at = models.DateTimeField()
     used_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    email_delivery_status = models.CharField(
+        max_length=16,
+        choices=InvitationEmailStatus.choices,
+        default=InvitationEmailStatus.PENDING,
+    )
+    email_sent_at = models.DateTimeField(null=True, blank=True)
+    email_error = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

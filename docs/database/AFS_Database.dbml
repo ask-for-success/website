@@ -99,10 +99,13 @@ Table membership_invitations {
   expires_at timestamptz [not null]
   used_at timestamptz
   cancelled_at timestamptz
+  email_delivery_status varchar(16) [not null, default: "pending"]
+  email_sent_at timestamptz
+  email_error text [not null, default: ""]
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
 
-  Note: "Only the one-time setup token hash is stored."
+  Note: "Only the one-time setup token hash is stored. Email failure does not invalidate the invitation."
 }
 
 Table events {

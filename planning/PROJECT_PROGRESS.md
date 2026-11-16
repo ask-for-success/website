@@ -1,6 +1,6 @@
 # Project progress
 
-**Last updated:** November 15, 2026
+**Last updated:** November 16, 2026
 
 This file records delivery status without duplicating requirements, database models, or API contracts.
 
@@ -65,6 +65,9 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Use a single-use invitation token that expires after forty-eight hours and is stored only as a hash.
 - [x] Allow a missing phone number only for inactive invited accounts.
 - [x] Add invitation creation and acceptance APIs.
+- [x] Send the secure invitation setup link through Django email.
+- [x] Record invitation email delivery state, sent time, and failure details.
+- [x] Omit raw invitation tokens from production API responses.
 - [x] Add public active department and position reference APIs.
 - [x] Add HR-protected membership list and detail APIs.
 - [x] Add admission for an accepted person with an existing active account.
@@ -234,5 +237,6 @@ Validate the completed backend contracts with the frontend team, beginning with 
 
 ## Next implementation
 
-1. Confirm recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger and Postman.
-2. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.
+1. Build and run backend-owned end-to-end acceptance coverage while the frontend remains in static development.
+2. Confirm recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger and Postman when it is ready.
+3. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.

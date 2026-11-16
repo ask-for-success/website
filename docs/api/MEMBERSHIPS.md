@@ -123,9 +123,15 @@ This endpoint requires an access token for a content manager who also has the in
 }
 ```
 
-The `201` response contains the invitation ID, expiration time, and `setup_token`. The raw token is returned once for testing until email delivery is connected. It must not be logged or stored by the frontend.
+The backend immediately attempts to email a secure account-setup link to the invited address. The link points to `/membership/invitation/setup` on `AFS_PUBLIC_WEB_URL`, contains the one-time token, and expires after forty-eight hours.
+
+The `201` response contains the invitation ID, email, expiration time, `email_delivery_status`, `email_sent_at`, and `email_error`. Delivery state is `pending`, `sent`, or `failed`. A delivery failure never rolls back the inactive account, membership, assignment, or invitation, so HR can see that follow-up is required.
+
+When `DEBUG` is enabled, the response also contains `setup_token` for local Postman and automated testing. The field is completely omitted when `DEBUG` is disabled and must never be expected by a production frontend. The raw token is stored only as a SHA-256 hash in PostgreSQL.
 
 Reissuing an invitation for the same inactive invited account cancels the previous token and keeps the same membership. The department and position must remain unchanged during reissue.
+
+Local development uses Django's console email backend, so the complete message and setup link appear in the backend logs. Amazon SES configuration remains deferred to the final infrastructure phase; it will use the same Django email interface without changing this API contract.
 
 ## Set up the invited account
 

@@ -1,8 +1,10 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth.models import Group, Permission
+from django.core import mail
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -11,6 +13,7 @@ from apps.accounts.models import User
 from apps.organization.models import Department, Position
 
 from ..models import (
+    InvitationEmailStatus,
     MembershipInvitation,
     MembershipInvitationStatus,
     OnboardingStatus,
@@ -87,6 +90,10 @@ class MembershipInvitationOperationTests(
         assignment = result.invitation.membership.assignments.get()
         self.assertEqual(assignment.department, self.department)
         self.assertEqual(assignment.position, self.position)
+        self.assertEqual(
+            result.invitation.email_delivery_status,
+            InvitationEmailStatus.PENDING,
+        )
 
     def test_raw_token_is_never_stored(self):
         result = create_membership_invitation(**self.invitation_data())
@@ -200,7 +207,12 @@ class MembershipInvitationApiTests(
             "position_id": str(self.position.id),
         }
 
-    def test_api_creates_invitation_and_sets_up_account(self):
+    @override_settings(
+        DEBUG=True,
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        PUBLIC_WEB_URL="https://members.askforsuccess.example",
+    )
+    def test_api_emails_invitation_and_sets_up_account(self):
         self.client.force_authenticate(self.hr_manager)
         creation = self.client.post(
             "/api/v1/memberships/invitations/",
@@ -210,6 +222,20 @@ class MembershipInvitationApiTests(
 
         self.assertEqual(creation.status_code, status.HTTP_201_CREATED)
         self.assertIn("setup_token", creation.data)
+        self.assertEqual(
+            creation.data["email_delivery_status"],
+            InvitationEmailStatus.SENT,
+        )
+        self.assertIsNotNone(creation.data["email_sent_at"])
+        self.assertEqual(creation.data["email_error"], "")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["api-invited@example.com"])
+        self.assertIn(
+            "https://members.askforsuccess.example/"
+            "membership/invitation/setup?token=",
+            mail.outbox[0].body,
+        )
+        self.assertIn(creation.data["setup_token"], mail.outbox[0].body)
 
         self.client.force_authenticate(user=None)
         acceptance = self.client.post(
@@ -233,6 +259,62 @@ class MembershipInvitationApiTests(
             format="json",
         )
         self.assertEqual(login.status_code, status.HTTP_200_OK)
+
+    @override_settings(DEBUG=True)
+    @patch(
+        "apps.memberships.operations.EmailMessage.send",
+        side_effect=RuntimeError("Email service unavailable"),
+    )
+    def test_email_failure_does_not_rollback_invitation(self, mocked_send):
+        self.client.force_authenticate(self.hr_manager)
+
+        response = self.client.post(
+            "/api/v1/memberships/invitations/",
+            self.create_payload(),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            response.data["email_delivery_status"],
+            InvitationEmailStatus.FAILED,
+        )
+        self.assertIn("Email service unavailable", response.data["email_error"])
+        invitation = MembershipInvitation.objects.get(
+            id=response.data["invitation_id"]
+        )
+        self.assertEqual(invitation.status, MembershipInvitationStatus.ACTIVE)
+        self.assertEqual(
+            invitation.email_delivery_status,
+            InvitationEmailStatus.FAILED,
+        )
+        self.assertIsNone(invitation.email_sent_at)
+        mocked_send.assert_called_once_with(fail_silently=False)
+
+    @override_settings(
+        DEBUG=False,
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    )
+    def test_production_response_never_exposes_raw_setup_token(self):
+        self.client.force_authenticate(self.hr_manager)
+
+        response = self.client.post(
+            "/api/v1/memberships/invitations/",
+            self.create_payload(),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn("setup_token", response.data)
+        self.assertEqual(
+            response.data["email_delivery_status"],
+            InvitationEmailStatus.SENT,
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(
+            "/membership/invitation/setup?token=",
+            mail.outbox[0].body,
+        )
 
     def test_api_rejects_unauthorized_creator(self):
         self.client.force_authenticate(self.ordinary_user)

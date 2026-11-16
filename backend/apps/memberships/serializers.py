@@ -6,6 +6,7 @@ from apps.accounts.models import User
 from apps.organization.models import Department, Position
 
 from .models import (
+    InvitationEmailStatus,
     MemberAssignment,
     MemberIdentity,
     Membership,
@@ -58,7 +59,18 @@ class MembershipInvitationResultSerializer(serializers.Serializer):
     invitation_id = serializers.UUIDField()
     email = serializers.EmailField()
     expires_at = serializers.DateTimeField()
-    setup_token = serializers.CharField()
+    email_delivery_status = serializers.ChoiceField(
+        choices=InvitationEmailStatus.choices,
+    )
+    email_sent_at = serializers.DateTimeField(allow_null=True)
+    email_error = serializers.CharField(allow_blank=True)
+    setup_token = serializers.CharField(
+        required=False,
+        help_text=(
+            "Development-only raw setup token. This field is omitted when "
+            "DEBUG is disabled."
+        ),
+    )
 
 
 class MembershipInvitationAcceptSerializer(serializers.Serializer):

@@ -44,8 +44,16 @@ class MemberAssignmentAdmin(admin.ModelAdmin):
 
 @admin.register(MembershipInvitation)
 class MembershipInvitationAdmin(admin.ModelAdmin):
-    list_display = ("user", "status", "expires_at", "created_by", "created_at")
-    list_filter = ("status",)
+    list_display = (
+        "user",
+        "status",
+        "email_delivery_status",
+        "email_sent_at",
+        "expires_at",
+        "created_by",
+        "created_at",
+    )
+    list_filter = ("status", "email_delivery_status")
     search_fields = ("user__email", "user__first_name", "user__last_name")
     readonly_fields = (
         "token_hash",
@@ -53,5 +61,7 @@ class MembershipInvitationAdmin(admin.ModelAdmin):
         "updated_at",
         "used_at",
         "cancelled_at",
+        "email_sent_at",
+        "email_error",
     )
     ordering = ("-created_at",)

@@ -41,7 +41,7 @@ All organization and membership tables, columns, constraints, models, and status
 
 ## Membership invitations
 
-An invitation links a membership, invited account, and authorized creator. It stores only the token hash, expiration, and state. A partial unique constraint permits only one active invitation per user. Tokens expire after forty-eight hours, work once, and are invalidated when reissued.
+An invitation links a membership, invited account, and authorized creator. It stores only the token hash, expiration, state, email-delivery state, sent time, and bounded delivery error. A partial unique constraint permits only one active invitation per user. Tokens expire after forty-eight hours, work once, and are invalidated when reissued. Email failure is retained without invalidating or deleting the invitation.
 
 ## Events
 
