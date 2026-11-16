@@ -220,12 +220,15 @@ The implementation source of truth is the [email delivery guide](../docs/operati
 - [x] Provide a non-destructive local-file migration command that preserves object paths.
 - [x] Add automated storage-policy, URL, migration, and domain regression tests.
 - [x] Document local operation and production requirements.
+- [x] Add a destination-independent PostgreSQL and SeaweedFS logical backup package.
+- [x] Add versioned manifests, per-file integrity verification, and guarded restore commands.
+- [x] Prepare optional encrypted Restic transfer and retention configuration for a future association-controlled backup server.
 - [ ] Configure an HTTPS public-media reverse proxy for the production deployment.
 - [ ] Replace development credentials with production secret management.
 - [ ] Implement off-host backups and validate a full restore.
 - [ ] Configure retention, capacity monitoring, and recovery alerts.
 
-The implementation source of truth is the [file storage guide](../docs/development/STORAGE.md).
+Storage behavior is documented in the [file storage guide](../docs/development/STORAGE.md). Backup and recovery operations are documented in the [backup and recovery guide](../docs/operations/BACKUP_RECOVERY.md).
 
 ## Administration and audit
 

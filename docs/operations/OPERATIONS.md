@@ -20,3 +20,4 @@ Progress for this work is recorded only in [PROJECT_PROGRESS.md](../../planning/
 
 The implemented storage topology, configuration, and migration commands are documented in the [file storage guide](../development/STORAGE.md).
 The implemented Amazon SES configuration and deployment validation procedure are documented in the [email delivery guide](./EMAIL_DELIVERY.md).
+The destination-independent backup package, encrypted remote handoff, and guarded restore procedure are documented in the [backup and recovery guide](./BACKUP_RECOVERY.md).

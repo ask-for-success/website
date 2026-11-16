@@ -10,5 +10,6 @@ __pycache__/
 htmlcov/
 backend/media/
 backend/private_media/
+backups/
 .idea/
 .vscode/

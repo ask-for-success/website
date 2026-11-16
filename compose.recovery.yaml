@@ -1,0 +1,66 @@
+services:
+  recovery-database:
+    profiles: ["recovery"]
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: afs_recovery
+      POSTGRES_USER: afs_recovery
+      POSTGRES_PASSWORD: afs-recovery-validation-only
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U afs_recovery -d afs_recovery",
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  recovery-seaweedfs:
+    profiles: ["recovery"]
+    image: chrislusf/seaweedfs:4.53
+    command:
+      - mini
+      - -dir=/data
+      - -ip=recovery-seaweedfs
+      - -ip.bind=0.0.0.0
+    environment:
+      AWS_ACCESS_KEY_ID: afs-recovery-access
+      AWS_SECRET_ACCESS_KEY: afs-recovery-secret
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:9333/cluster/healthz"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    tmpfs:
+      - /data
+
+  recovery-restore:
+    profiles: ["recovery"]
+    image: afs-backup-tool:local
+    build:
+      context: .
+      dockerfile: operations/backup/Dockerfile
+    environment:
+      AFS_DB_HOST: recovery-database
+      AFS_DB_PORT: 5432
+      AFS_DB_NAME: afs_recovery
+      AFS_DB_USER: afs_recovery
+      AFS_DB_PASSWORD: afs-recovery-validation-only
+      AFS_STORAGE_S3_ENDPOINT_URL: http://recovery-seaweedfs:8333
+      AFS_STORAGE_ACCESS_KEY: afs-recovery-access
+      AFS_STORAGE_SECRET_KEY: afs-recovery-secret
+      AFS_STORAGE_PUBLIC_BUCKET: afs-public-media
+      AFS_STORAGE_PRIVATE_BUCKET: afs-private-files
+      AFS_STORAGE_REGION: us-east-1
+      AFS_BACKUP_ROOT: /backups
+    volumes:
+      - ${AFS_BACKUP_HOST_PATH:-./backups}:/backups:ro
+    depends_on:
+      recovery-database:
+        condition: service_healthy
+      recovery-seaweedfs:
+        condition: service_healthy

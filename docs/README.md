@@ -25,6 +25,7 @@ This file is the single entry point for project documentation. Each subject has 
 | Review implemented data storage | [Database schema](./database/SCHEMA.md) |
 | Set up, run, or test the project | [Development guide](./development/GUIDE.md) |
 | Configure SeaweedFS or migrate existing files | [File storage guide](./development/STORAGE.md) |
+| Create, verify, transfer, or restore backups | [Backup and recovery guide](./operations/BACKUP_RECOVERY.md) |
 | Configure and validate Amazon SES email delivery | [Email delivery guide](./operations/EMAIL_DELIVERY.md) |
 | Prepare for production | [Operations](./operations/OPERATIONS.md) |
 | Check progress and the next step | [Project progress](../planning/PROJECT_PROGRESS.md) |

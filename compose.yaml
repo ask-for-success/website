@@ -86,6 +86,42 @@ services:
       storage-init:
         condition: service_completed_successfully
 
+  backup:
+    profiles: ["operations"]
+    image: afs-backup-tool:local
+    build:
+      context: .
+      dockerfile: operations/backup/Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      AFS_DB_HOST: database
+      AFS_DB_PORT: 5432
+      AFS_DB_NAME: ${AFS_DB_NAME:-afs}
+      AFS_DB_USER: ${AFS_DB_USER:-afs}
+      AFS_DB_PASSWORD: ${AFS_DB_PASSWORD:-afs}
+      AFS_STORAGE_S3_ENDPOINT_URL: http://seaweedfs:8333
+      AFS_STORAGE_ACCESS_KEY: ${AFS_STORAGE_ACCESS_KEY:-afs-local-access}
+      AFS_STORAGE_SECRET_KEY: ${AFS_STORAGE_SECRET_KEY:-afs-local-secret-change-me}
+      AFS_STORAGE_PUBLIC_BUCKET: ${AFS_STORAGE_PUBLIC_BUCKET:-afs-public-media}
+      AFS_STORAGE_PRIVATE_BUCKET: ${AFS_STORAGE_PRIVATE_BUCKET:-afs-private-files}
+      AFS_STORAGE_REGION: ${AFS_STORAGE_REGION:-us-east-1}
+      AFS_BACKUP_ROOT: /backups
+      AFS_BACKUP_APP_VERSION: ${AFS_BACKUP_APP_VERSION:-local-development}
+      AFS_BACKUP_REPOSITORY: ${AFS_BACKUP_REPOSITORY:-}
+      AFS_BACKUP_PASSWORD_FILE: ${AFS_BACKUP_PASSWORD_FILE:-}
+      AFS_BACKUP_RETENTION_DAILY: ${AFS_BACKUP_RETENTION_DAILY:-14}
+      AFS_BACKUP_RETENTION_WEEKLY: ${AFS_BACKUP_RETENTION_WEEKLY:-8}
+      AFS_BACKUP_RETENTION_MONTHLY: ${AFS_BACKUP_RETENTION_MONTHLY:-12}
+    volumes:
+      - ${AFS_BACKUP_HOST_PATH:-./backups}:/backups
+    depends_on:
+      database:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   seaweedfs_data:
