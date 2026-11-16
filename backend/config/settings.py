@@ -2,6 +2,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -38,6 +40,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "storages",
     "rest_framework_simplejwt.token_blacklist",
     "apps.accounts",
     "apps.memberships",
@@ -47,6 +50,7 @@ INSTALLED_APPS = [
     "apps.organization",
     "apps.recruitment",
     "apps.audit",
+    "apps.file_storage",
 ]
 
 MIDDLEWARE = [
@@ -124,6 +128,101 @@ STATIC_URL = "static/"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 PRIVATE_MEDIA_ROOT = BASE_DIR / "private_media"
+FILE_STORAGE_BACKEND = os.getenv("AFS_STORAGE_BACKEND", "filesystem").lower()
+
+if FILE_STORAGE_BACKEND not in {"filesystem", "seaweedfs"}:
+    raise ImproperlyConfigured(
+        "AFS_STORAGE_BACKEND must be either 'filesystem' or 'seaweedfs'."
+    )
+
+if FILE_STORAGE_BACKEND == "seaweedfs":
+    SEAWEEDFS_ENDPOINT_URL = os.getenv("AFS_STORAGE_S3_ENDPOINT_URL", "").rstrip(
+        "/"
+    )
+    SEAWEEDFS_PUBLIC_BASE_URL = os.getenv(
+        "AFS_STORAGE_PUBLIC_BASE_URL",
+        "",
+    ).rstrip("/")
+    SEAWEEDFS_ACCESS_KEY = os.getenv("AFS_STORAGE_ACCESS_KEY", "")
+    SEAWEEDFS_SECRET_KEY = os.getenv("AFS_STORAGE_SECRET_KEY", "")
+    SEAWEEDFS_PUBLIC_BUCKET = os.getenv(
+        "AFS_STORAGE_PUBLIC_BUCKET",
+        "afs-public-media",
+    )
+    SEAWEEDFS_PRIVATE_BUCKET = os.getenv(
+        "AFS_STORAGE_PRIVATE_BUCKET",
+        "afs-private-files",
+    )
+    SEAWEEDFS_REGION = os.getenv("AFS_STORAGE_REGION", "us-east-1")
+    required_storage_settings = {
+        "AFS_STORAGE_S3_ENDPOINT_URL": SEAWEEDFS_ENDPOINT_URL,
+        "AFS_STORAGE_PUBLIC_BASE_URL": SEAWEEDFS_PUBLIC_BASE_URL,
+        "AFS_STORAGE_ACCESS_KEY": SEAWEEDFS_ACCESS_KEY,
+        "AFS_STORAGE_SECRET_KEY": SEAWEEDFS_SECRET_KEY,
+    }
+    missing_storage_settings = [
+        name for name, value in required_storage_settings.items() if not value
+    ]
+    if missing_storage_settings:
+        raise ImproperlyConfigured(
+            "Missing SeaweedFS settings: "
+            + ", ".join(sorted(missing_storage_settings))
+        )
+
+    common_s3_options = {
+        "access_key": SEAWEEDFS_ACCESS_KEY,
+        "secret_key": SEAWEEDFS_SECRET_KEY,
+        "endpoint_url": SEAWEEDFS_ENDPOINT_URL,
+        "region_name": SEAWEEDFS_REGION,
+        "addressing_style": "path",
+        "signature_version": "s3v4",
+        "default_acl": None,
+        "file_overwrite": False,
+        "max_memory_size": 10 * 1024 * 1024,
+    }
+    STORAGES = {
+        "default": {
+            "BACKEND": "apps.file_storage.backends.PublicMediaStorage",
+            "OPTIONS": {
+                **common_s3_options,
+                "bucket_name": SEAWEEDFS_PUBLIC_BUCKET,
+                "querystring_auth": False,
+            },
+        },
+        "private": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                **common_s3_options,
+                "bucket_name": SEAWEEDFS_PRIVATE_BUCKET,
+                "querystring_auth": True,
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    MEDIA_URL = f"{SEAWEEDFS_PUBLIC_BASE_URL}/"
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {
+                "location": MEDIA_ROOT,
+                "base_url": MEDIA_URL,
+            },
+        },
+        "private": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {
+                "location": PRIVATE_MEDIA_ROOT,
+                "base_url": None,
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 

@@ -12,7 +12,7 @@ PostgreSQL is the application database. Django migrations define the real schema
 
 ## D-003 — Local environment
 
-Docker Compose provides Django and PostgreSQL. Additional infrastructure is introduced only when an approved feature requires it.
+Docker Compose provides Django, PostgreSQL, and self-hosted SeaweedFS with an idempotent bucket-initialization job. Additional infrastructure is introduced only when an approved feature requires it.
 
 ## D-004 — User identity
 
@@ -116,11 +116,13 @@ Application states are `submitted`, `under_review`, `contacted`, `interview`, `o
 
 Candidate acceptance creates pending membership and an initial assignment for a new member. It reactivates the same durable membership without repeating completed onboarding for a former member. A pending or active member accepting a different assignment keeps the current assignment until HR completes the explicit transfer workflow.
 
-## D-025 — Production infrastructure is deferred
+## D-025 — Self-hosted storage and production email
 
-Production files remain under the organization's control in an organization-owned, self-hosted open-source storage service. SeaweedFS is the planned service for CMS media, CVs, and other application files. Local development continues to use the existing public media directory and separate private CV directory. SeaweedFS installation, access policy design, file migration, backup, retention, and delivery configuration belong to the final infrastructure phase and must not interrupt current business-logic development.
+Production files remain under the organization's control in organization-owned, self-hosted SeaweedFS. Django uses its S3-compatible API without changing domain endpoints. Public CMS media and private documents use separate buckets. Public objects allow anonymous reads through the configured media base URL; private objects never expose a public URL and remain available only through authorized API operations. PostgreSQL stores object paths and metadata, not file bytes.
 
-Amazon SES is the selected production email provider. Development continues to use Django's console or test email backends through the same email interface. SES credentials and live delivery testing are deferred to the final infrastructure phase. Business decisions and delivery states remain implemented now so introducing both production services later does not require changing domain APIs or workflows.
+Docker Compose pins the SeaweedFS image, persists its data in a dedicated volume, and runs idempotent bucket initialization. Existing local public and private files can be copied while preserving object paths. A production deployment still requires organization-managed secrets, HTTPS media delivery, off-host backup and tested restoration, retention rules, capacity monitoring, and recovery procedures.
+
+Amazon SES is the selected production email provider. Development continues to use Django's console or test email backends through the same email interface. SES credentials and live delivery testing remain deferred. Business decisions and delivery states are already implemented so introducing SES does not require changing domain APIs or workflows.
 
 ## D-026 — Predefined structured public-page CMS
 

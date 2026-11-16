@@ -24,6 +24,7 @@ This file is the single entry point for project documentation. Each subject has 
 | Find an approved decision | [Decisions](./architecture/DECISIONS.md) |
 | Review implemented data storage | [Database schema](./database/SCHEMA.md) |
 | Set up, run, or test the project | [Development guide](./development/GUIDE.md) |
+| Configure SeaweedFS or migrate existing files | [File storage guide](./development/STORAGE.md) |
 | Prepare for production | [Operations](./operations/OPERATIONS.md) |
 | Check progress and the next step | [Project progress](../planning/PROJECT_PROGRESS.md) |
 | Answer unresolved product questions | [Open questions](../planning/requirements/OPEN_QUESTIONS_V1.md) |

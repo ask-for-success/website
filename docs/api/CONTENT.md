@@ -85,7 +85,7 @@ The CMS editor sends the article content through `body_markdown`. PostgreSQL sto
 ![Volunteers working with students](https://cdn.example.com/news/volunteers.jpg)
 ```
 
-The image file remains in media or cloud storage; only its URL is embedded in the Markdown. The public frontend converts Markdown to HTML. It must disable raw HTML or sanitize the generated HTML, restrict unsafe URL schemes, and never execute Markdown content directly. This sanitation is mandatory because CMS content must still be treated as untrusted input.
+The image file remains in public object storage; only its URL is embedded in the Markdown. The public frontend converts Markdown to HTML. It must disable raw HTML or sanitize the generated HTML, restrict unsafe URL schemes, and never execute Markdown content directly. This sanitation is mandatory because CMS content must still be treated as untrusted input.
 
 The list supports `category`, `search`, `page`, and `page_size` query parameters. Content managers can also use `status`. Results contain 12 items by default, with a maximum requested page size of 50.
 
@@ -139,4 +139,4 @@ The feed returns only active announcements whose publication time has arrived an
 
 Create and update requests containing an image use `multipart/form-data`. Each image must be a valid raster image no larger than 10 MB. Alternative text is required so the frontend can provide an accessible experience.
 
-In local development, files are stored under `backend/media/` and served from `/media/`. PostgreSQL stores only the file path and content metadata. Production will use organization-owned, self-hosted open-source storage, with SeaweedFS planned, but storage and delivery integration are deferred to the final infrastructure phase.
+Files are stored in the public SeaweedFS bucket and are readable through the configured public media base URL. PostgreSQL stores only the object path and content metadata. SeaweedFS is self-hosted by the organization; private documents use a different bucket and are never exposed through this public URL. Operational configuration and migration instructions are in the [file storage guide](../development/STORAGE.md).

@@ -33,5 +33,5 @@ urlpatterns = [
     path("api/v1/audit/", include("apps.audit.urls")),
 ]
 
-if settings.DEBUG:
+if settings.DEBUG and settings.FILE_STORAGE_BACKEND == "filesystem":
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

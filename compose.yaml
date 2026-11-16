@@ -15,6 +15,46 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.53
+    command:
+      - mini
+      - -dir=/data
+      - -ip=seaweedfs
+      - -ip.bind=0.0.0.0
+    environment:
+      AWS_ACCESS_KEY_ID: ${AFS_STORAGE_ACCESS_KEY:-afs-local-access}
+      AWS_SECRET_ACCESS_KEY: ${AFS_STORAGE_SECRET_KEY:-afs-local-secret-change-me}
+      WEED_ADMIN_PASSWORD: ${AFS_SEAWEEDFS_ADMIN_PASSWORD:-afs-local-admin-change-me}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:9333/cluster/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    ports:
+      - "127.0.0.1:${AFS_STORAGE_S3_HOST_PORT:-8333}:8333"
+    volumes:
+      - seaweedfs_data:/data
+
+  storage-init:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python manage.py initialize_storage
+    environment:
+      AFS_STORAGE_BACKEND: seaweedfs
+      AFS_STORAGE_S3_ENDPOINT_URL: http://seaweedfs:8333
+      AFS_STORAGE_PUBLIC_BASE_URL: ${AFS_STORAGE_PUBLIC_BASE_URL:-http://localhost:8333/afs-public-media}
+      AFS_STORAGE_ACCESS_KEY: ${AFS_STORAGE_ACCESS_KEY:-afs-local-access}
+      AFS_STORAGE_SECRET_KEY: ${AFS_STORAGE_SECRET_KEY:-afs-local-secret-change-me}
+      AFS_STORAGE_PUBLIC_BUCKET: ${AFS_STORAGE_PUBLIC_BUCKET:-afs-public-media}
+      AFS_STORAGE_PRIVATE_BUCKET: ${AFS_STORAGE_PRIVATE_BUCKET:-afs-private-files}
+      AFS_STORAGE_REGION: ${AFS_STORAGE_REGION:-us-east-1}
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+
   backend:
     build:
       context: .
@@ -25,6 +65,14 @@ services:
         required: false
     environment:
       AFS_DB_HOST: database
+      AFS_STORAGE_BACKEND: seaweedfs
+      AFS_STORAGE_S3_ENDPOINT_URL: http://seaweedfs:8333
+      AFS_STORAGE_PUBLIC_BASE_URL: ${AFS_STORAGE_PUBLIC_BASE_URL:-http://localhost:8333/afs-public-media}
+      AFS_STORAGE_ACCESS_KEY: ${AFS_STORAGE_ACCESS_KEY:-afs-local-access}
+      AFS_STORAGE_SECRET_KEY: ${AFS_STORAGE_SECRET_KEY:-afs-local-secret-change-me}
+      AFS_STORAGE_PUBLIC_BUCKET: ${AFS_STORAGE_PUBLIC_BUCKET:-afs-public-media}
+      AFS_STORAGE_PRIVATE_BUCKET: ${AFS_STORAGE_PRIVATE_BUCKET:-afs-private-files}
+      AFS_STORAGE_REGION: ${AFS_STORAGE_REGION:-us-east-1}
     volumes:
       - ./backend:/app
     ports:
@@ -32,6 +80,9 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:
+  seaweedfs_data:

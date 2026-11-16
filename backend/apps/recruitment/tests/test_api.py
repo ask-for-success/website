@@ -5,6 +5,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import Group, Permission
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files.storage import FileSystemStorage
 from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
@@ -21,6 +22,7 @@ from apps.memberships.models import (
 from apps.organization.models import Department, Position
 
 from ..models import (
+    ApplicationCv,
     ApplicationStatus,
     DecisionEmailStatus,
     OfferResponse,
@@ -32,7 +34,6 @@ from ..models import (
     RecruitmentQuestion,
     RecruitmentQuestionType,
 )
-from ..storage import private_media_storage
 
 
 def pdf_file(name="candidate-cv.pdf"):
@@ -50,18 +51,18 @@ class RecruitmentApiTests(APITestCase):
     @classmethod
     def setUpClass(cls):
         cls.private_media_directory = TemporaryDirectory()
-        cls.original_storage_location = private_media_storage._location
-        private_media_storage._location = cls.private_media_directory.name
-        private_media_storage.__dict__.pop("base_location", None)
-        private_media_storage.__dict__.pop("location", None)
+        cls.cv_field = ApplicationCv._meta.get_field("file")
+        cls.original_cv_storage = cls.cv_field.storage
+        cls.cv_field.storage = FileSystemStorage(
+            location=cls.private_media_directory.name,
+            base_url=None,
+        )
         super().setUpClass()
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        private_media_storage._location = cls.original_storage_location
-        private_media_storage.__dict__.pop("base_location", None)
-        private_media_storage.__dict__.pop("location", None)
+        cls.cv_field.storage = cls.original_cv_storage
         cls.private_media_directory.cleanup()
 
     @classmethod

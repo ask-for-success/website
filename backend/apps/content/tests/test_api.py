@@ -50,7 +50,29 @@ class ContentApiTests(APITestCase):
     def setUpClass(cls):
         cls.media_directory = TemporaryDirectory()
         cls.media_override = override_settings(
-            MEDIA_ROOT=cls.media_directory.name
+            MEDIA_ROOT=cls.media_directory.name,
+            STORAGES={
+                "default": {
+                    "BACKEND": "django.core.files.storage.FileSystemStorage",
+                    "OPTIONS": {
+                        "location": cls.media_directory.name,
+                        "base_url": "/media/",
+                    },
+                },
+                "private": {
+                    "BACKEND": "django.core.files.storage.FileSystemStorage",
+                    "OPTIONS": {
+                        "location": cls.media_directory.name,
+                        "base_url": None,
+                    },
+                },
+                "staticfiles": {
+                    "BACKEND": (
+                        "django.contrib.staticfiles.storage."
+                        "StaticFilesStorage"
+                    ),
+                },
+            },
         )
         cls.media_override.enable()
         super().setUpClass()

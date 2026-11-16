@@ -75,7 +75,7 @@ The ordered `impact_statistics`, `home_features`, `about_pillars`, `involvement_
 
 The `gallery_videos` table stores validated YouTube URLs with locally managed optional presentation thumbnails, accessible alternative text, duration labels, ordering, and the standard publication lifecycle. Video files are hosted by YouTube and are never uploaded to the application. YouTube video IDs, privacy-enhanced embed URLs, and default thumbnail URLs are derived by the API and are not duplicated in PostgreSQL.
 
-Image files remain outside PostgreSQL. The database stores their relative media paths. Draft and archived records remain available to content managers; public queries return only due published or scheduled records whose category is active.
+Image files remain outside PostgreSQL in the public SeaweedFS bucket. The database stores their relative object paths. Draft and archived records remain available to content managers; public queries return only due published or scheduled records whose category is active.
 
 ## Donations
 
@@ -91,7 +91,7 @@ The `recruitment_applications` table connects one authenticated applicant to one
 
 Offer acceptance atomically creates or reactivates membership when required and changes the candidate's other non-final applications to `withdrawn`. Offer decline changes only the selected application to `declined_by_candidate`. A pending or active member accepting a different assignment keeps the current assignment until the explicit membership transfer operation is completed.
 
-The `application_cvs` table stores one CV metadata record per application: private file path, original name, MIME type, size, SHA-256 hash, and upload time. PDF bytes remain outside PostgreSQL and are not exposed through public media URLs.
+The `application_cvs` table stores one CV metadata record per application: private object path, original name, MIME type, size, SHA-256 hash, and upload time. PDF bytes remain outside PostgreSQL in the private SeaweedFS bucket and are not exposed through public media URLs.
 
 ## Audit records
 

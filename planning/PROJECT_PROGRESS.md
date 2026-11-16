@@ -6,10 +6,10 @@ This file records delivery status without duplicating requirements, database mod
 
 ## Current position
 
-- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, the complete event registration lifecycle, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, and immutable cross-domain audit records.
+- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, the complete event registration lifecycle, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, immutable cross-domain audit records, and self-hosted SeaweedFS integration.
 - **Under review:** global roles, permissions, authentication behavior, and frontend contracts.
 - **In progress:** organization, membership, invitations, onboarding, recruitment frontend validation, and CMS frontend validation.
-- **Deferred to the final infrastructure phase:** self-hosted open-source file storage and Amazon SES production email configuration.
+- **Deferred to the final infrastructure phase:** Amazon SES credentials and live email validation, plus production storage hardening.
 
 ## Delivery phases
 
@@ -23,7 +23,7 @@ This file records delivery status without duplicating requirements, database mod
 | 6. Content management | In progress | News, editable pages, and media are validated. |
 | 7. Events and check-in | Under review | Frontend confirms registration, capacity, cancellation, notification, ticket, and check-in contracts. |
 | 8. Administration and audit | In progress | Administration and traceability are validated. |
-| 9. Production services | Not started | Operational requirements are complete. |
+| 9. Production services | In progress | SeaweedFS is integrated; email delivery and production hardening remain. |
 
 ## Accounts and authentication
 
@@ -164,7 +164,7 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Add gallery items with images, captions, accessible alternative text, and ordering.
 - [x] Add public category filtering, search, and pagination.
 - [x] Add protected content-manager create and update operations.
-- [x] Add image validation, local media storage, migrations, tests, and Swagger documentation.
+- [x] Add image validation, storage abstraction, migrations, tests, and Swagger documentation.
 - [x] Confirm Markdown article bodies with inline images referenced by URL.
 - [x] Add YouTube-hosted gallery highlight videos with validated embed data, optional presentation thumbnails, and publication states.
 - [x] Add event cover images, attendance labels, and upcoming/past filtering.
@@ -175,8 +175,8 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Support scheduled publication, expiration, deactivation, and an optional event-or-article reference.
 - [x] Keep announcement email delivery outside V1.
 - [ ] Confirm the API contract and card ordering with the frontend team.
-- [x] Select organization-owned, self-hosted open-source storage for production files, with SeaweedFS as the planned service.
-- [ ] Deferred: integrate SeaweedFS and production media delivery in the final infrastructure phase.
+- [x] Select organization-owned, self-hosted SeaweedFS for application files.
+- [x] Integrate SeaweedFS without changing CMS, event, or recruitment API contracts.
 
 ## Donations
 
@@ -191,29 +191,24 @@ This file records delivery status without duplicating requirements, database mod
 - [ ] Confirm the donation form and dashboard contract with the frontend team.
 - [ ] Deferred: configure and validate Amazon SES in the final infrastructure phase.
 
-## File storage TODO
+## File storage
 
-Current development behavior is complete enough for API testing:
+- [x] Run a pinned SeaweedFS service through Docker Compose.
+- [x] Persist object data in a dedicated Docker volume.
+- [x] Use separate public-media and private-document buckets.
+- [x] Allow anonymous reads only from the public bucket.
+- [x] Keep candidate CVs behind applicant-or-HR API authorization.
+- [x] Integrate Django through the S3-compatible storage backend without changing API contracts.
+- [x] Initialize buckets and policies idempotently during stack startup.
+- [x] Provide a non-destructive local-file migration command that preserves object paths.
+- [x] Add automated storage-policy, URL, migration, and domain regression tests.
+- [x] Document local operation and production requirements.
+- [ ] Configure an HTTPS public-media reverse proxy for the production deployment.
+- [ ] Replace development credentials with production secret management.
+- [ ] Implement off-host backups and validate a full restore.
+- [ ] Configure retention, capacity monitoring, and recovery alerts.
 
-- CMS images use the local Django media directory.
-- Candidate CVs use a separate private local directory.
-- CVs have no public media URL and require applicant-or-HR authorization through the API.
-- PostgreSQL stores file paths and metadata, not file bytes.
-
-Production files will remain under the organization's control in a self-hosted open-source storage service. SeaweedFS is the planned service. Its integration remains intentionally unimplemented until the final infrastructure phase so current work can focus on business structure and logic.
-
-When the final infrastructure phase begins, the self-hosted storage implementation must include:
-
-- separate public CMS media and private document access policies;
-- persistent production volumes or buckets;
-- a Django storage adapter without changing API contracts;
-- TLS and reverse-proxy configuration;
-- backup, restore, retention, and capacity monitoring;
-- migration of existing local files;
-- automated authorization and upload tests;
-- documented recovery procedures.
-
-Do not install SeaweedFS or change the local development storage during the current business-logic phase.
+The implementation source of truth is the [file storage guide](../docs/development/STORAGE.md).
 
 ## Administration and audit
 
@@ -233,10 +228,12 @@ Do not install SeaweedFS or change the local development storage during the curr
 
 ## Next engineering task
 
-Validate the completed backend contracts with the frontend team, beginning with events, recruitment, membership, content, member announcements, and donations. Keep production storage and email-provider integration deferred.
+Prepare the Amazon SES production email configuration while preserving the current Django email interface and development console backend. Live credentials and delivery validation require the production account.
 
 ## Next implementation
 
-1. Build and run backend-owned end-to-end acceptance coverage while the frontend remains in static development.
-2. Confirm recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger and Postman when it is ready.
-3. Integrate self-hosted SeaweedFS and Amazon SES only in the final infrastructure phase.
+1. Complete the Amazon SES configuration boundary, production documentation, and provider-independent tests.
+2. Finish storage deployment hardening: HTTPS media delivery, secret management, backup and restore, retention, and monitoring.
+3. Build backend-owned end-to-end acceptance coverage while the frontend remains in static development.
+4. Confirm recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger.
+5. Update and run the complete Postman acceptance collection last.
