@@ -9,7 +9,7 @@ Authorization uses Django groups as global role bundles and Django permissions a
 | Global role | Capabilities |
 |---|---|
 | `account_administrator` | Manage accounts and access assignments, read the global audit log, and access explicitly protected member identity records. |
-| `content_manager` | Manage CMS content after the CMS domain is implemented. |
+| `content_manager` | Manage website content, events, public forms, donations, and event-specific scanner assignments. |
 
 HR is not a global role or a dedicated account type. `accounts.manage_hr` is an additional permission assigned directly to selected content managers. The API rejects this permission unless the user also has the `content_manager` role.
 
