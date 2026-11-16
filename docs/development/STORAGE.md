@@ -38,6 +38,19 @@ docker compose logs storage-init seaweedfs
 
 The `storage-init` service is expected to exit with code `0` after creating or finding both buckets and applying their access policies. It runs again safely whenever the stack is recreated.
 
+## Local web interfaces
+
+SeaweedFS exposes its management interfaces only on the Windows loopback address. They are available from this computer but are not published to other devices on the network:
+
+| Interface | Local URL | Purpose |
+|---|---|---|
+| Admin UI | `http://localhost:12535` | Storage administration, maintenance, and service status |
+| Filer UI | `http://localhost:8888/buckets/` | Browse public and private bucket objects |
+| Master UI | `http://localhost:9333` | Inspect cluster topology and volume status |
+| S3 endpoint | `http://localhost:8333` | Application API endpoint; not a dashboard |
+
+The Admin UI uses `AFS_SEAWEEDFS_ADMIN_PASSWORD`. The default value in `compose.yaml` is for local development only and must be replaced before any non-local deployment. The Filer and Master interfaces must remain private in production.
+
 ## Configuration
 
 Copy `.env.example` to `.env` and replace every development secret before a non-local deployment.
@@ -54,6 +67,9 @@ Copy `.env.example` to `.env` and replace every development secret before a non-
 | `AFS_STORAGE_REGION` | S3 signing region. |
 | `AFS_STORAGE_S3_HOST_PORT` | Loopback port used by local development. |
 | `AFS_SEAWEEDFS_ADMIN_PASSWORD` | SeaweedFS administration password. |
+| `AFS_SEAWEEDFS_ADMIN_HOST_PORT` | Local Admin UI port. |
+| `AFS_SEAWEEDFS_FILER_HOST_PORT` | Local Filer UI port. |
+| `AFS_SEAWEEDFS_MASTER_HOST_PORT` | Local Master UI port. |
 
 `compose.yaml` deliberately supplies the internal endpoint as `http://seaweedfs:8333`. In production, `AFS_STORAGE_PUBLIC_BASE_URL` must be the HTTPS media URL exposed by the organization's reverse proxy, not an internal Docker hostname.
 
