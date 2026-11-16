@@ -131,7 +131,7 @@ When `DEBUG` is enabled, the response also contains `setup_token` for local Post
 
 Reissuing an invitation for the same inactive invited account cancels the previous token and keeps the same membership. The department and position must remain unchanged during reissue.
 
-Local development uses Django's console email backend, so the complete message and setup link appear in the backend logs. Amazon SES configuration remains deferred to the final infrastructure phase; it will use the same Django email interface without changing this API contract.
+Local development uses Django's console email provider, so the complete message and setup link appear in the backend logs. Production uses the integrated Amazon SES SMTP provider through the same Django interface without changing this API contract. Configuration and validation are documented in the [email delivery guide](../operations/EMAIL_DELIVERY.md).
 
 ## Set up the invited account
 

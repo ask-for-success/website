@@ -122,7 +122,7 @@ Production files remain under the organization's control in organization-owned, 
 
 Docker Compose pins the SeaweedFS image, persists its data in a dedicated volume, and runs idempotent bucket initialization. Existing local public and private files can be copied while preserving object paths. A production deployment still requires organization-managed secrets, HTTPS media delivery, off-host backup and tested restoration, retention rules, capacity monitoring, and recovery procedures.
 
-Amazon SES is the selected production email provider. Development continues to use Django's console or test email backends through the same email interface. SES credentials and live delivery testing remain deferred. Business decisions and delivery states are already implemented so introducing SES does not require changing domain APIs or workflows.
+Amazon SES is the production email provider through Django's SMTP backend and mandatory STARTTLS. Development continues to use Django's console or test email backends through the same interface. Selecting SES requires a Region, verified sender, Region-specific SES SMTP credentials, and a bounded connection timeout. Missing or invalid production configuration stops application startup. Credentials remain deployment secrets and are never stored in project files.
 
 ## D-026 — Predefined structured public-page CMS
 
@@ -186,7 +186,7 @@ Donation-interest records are part of V1. The public form has fixed fields for f
 
 The public response does not echo donor contact data. Content managers can list, search, filter, and read the immutable submissions through protected endpoints. CMS content managers may edit the donation section's explanatory content and CTA links, but they cannot change the operational form schema or rewrite submitted donor data.
 
-After the record is stored, the backend attempts an acknowledgement email telling the donor that the information was received and that the team will make contact later. Email delivery state and errors are retained; failure never deletes the business record. Amazon SES remains the selected production provider for the final infrastructure phase.
+After the record is stored, the backend attempts an acknowledgement email telling the donor that the information was received and that the team will make contact later. Email delivery state and errors are retained; failure never deletes the business record. The shared email interface uses the console provider in development and Amazon SES SMTP in production.
 
 ## D-034 — Event capacity and lifecycle
 
@@ -214,4 +214,4 @@ Creating a membership invitation automatically attempts to email the invited per
 
 The invitation is the business record and email is only its delivery channel. A delivery failure is stored as `failed` with a bounded error and never rolls back the inactive account, pending membership, initial assignment, onboarding record, or active invitation. Successful delivery records its sent time. Automatic retry remains outside V1.
 
-The creation response exposes the raw setup token only while Django `DEBUG` is enabled for local development and testing. Production responses omit the field completely. Amazon SES will replace the development email backend during the final infrastructure phase without changing the invitation API or business operation.
+The creation response exposes the raw setup token only while Django `DEBUG` is enabled for local development and testing. Production responses omit the field completely. The same invitation operation uses the console provider in development and the integrated Amazon SES SMTP provider in production without changing the API contract.

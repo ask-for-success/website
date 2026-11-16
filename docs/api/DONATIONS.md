@@ -27,7 +27,7 @@ The public response contains only the submission UUID, selected type, acknowledg
 
 After storage, the backend immediately attempts to email the donor. The message confirms that Ask For Success received the submission, thanks the donor, and explains that the team will make contact later.
 
-Email delivery state is `pending`, `sent`, or `failed`. Delivery failure never deletes or rolls back the donation record. Development uses the configured Django email backend; Amazon SES remains the production provider planned for the final infrastructure phase.
+Email delivery state is `pending`, `sent`, or `failed`. Delivery failure never deletes or rolls back the donation record. Development uses the console provider and production uses the integrated Amazon SES SMTP provider. Configuration and validation are documented in the [email delivery guide](../operations/EMAIL_DELIVERY.md).
 
 ## Content-manager access
 

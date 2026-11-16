@@ -4,6 +4,8 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
+from config.email import build_email_settings
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -51,6 +53,7 @@ INSTALLED_APPS = [
     "apps.recruitment",
     "apps.audit",
     "apps.file_storage",
+    "apps.email_delivery",
 ]
 
 MIDDLEWARE = [
@@ -109,19 +112,19 @@ TIME_ZONE = "Africa/Casablanca"
 USE_I18N = True
 USE_TZ = True
 
-EMAIL_BACKEND = os.getenv(
-    "AFS_EMAIL_BACKEND",
-    "django.core.mail.backends.console.EmailBackend",
-)
-DEFAULT_FROM_EMAIL = os.getenv(
-    "AFS_DEFAULT_FROM_EMAIL",
-    "no-reply@askforsuccess.local",
-)
-EMAIL_HOST = os.getenv("AFS_EMAIL_HOST", "")
-EMAIL_PORT = int(os.getenv("AFS_EMAIL_PORT", "587"))
-EMAIL_HOST_USER = os.getenv("AFS_EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.getenv("AFS_EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = get_boolean("AFS_EMAIL_USE_TLS", True)
+_email_settings = build_email_settings(os.environ)
+EMAIL_PROVIDER = _email_settings["EMAIL_PROVIDER"]
+EMAIL_BACKEND = _email_settings["EMAIL_BACKEND"]
+DEFAULT_FROM_EMAIL = _email_settings["DEFAULT_FROM_EMAIL"]
+EMAIL_HOST = _email_settings["EMAIL_HOST"]
+EMAIL_PORT = _email_settings["EMAIL_PORT"]
+EMAIL_HOST_USER = _email_settings["EMAIL_HOST_USER"]
+EMAIL_HOST_PASSWORD = _email_settings["EMAIL_HOST_PASSWORD"]
+EMAIL_USE_TLS = _email_settings["EMAIL_USE_TLS"]
+EMAIL_USE_SSL = _email_settings["EMAIL_USE_SSL"]
+EMAIL_TIMEOUT = _email_settings["EMAIL_TIMEOUT"]
+SES_REGION = _email_settings["SES_REGION"]
+SES_SMTP_HOST = _email_settings["SES_SMTP_HOST"]
 PUBLIC_WEB_URL = os.getenv("AFS_PUBLIC_WEB_URL", "http://localhost:3000")
 
 STATIC_URL = "static/"

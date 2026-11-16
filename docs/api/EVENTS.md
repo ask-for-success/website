@@ -87,7 +87,7 @@ When an event requires QR check-in, the server creates a signed opaque QR value,
 
 An email failure does not delete the registration. The registration records confirmation delivery as `failed`; a QR ticket also records its own failed delivery state for later handling.
 
-The local environment uses Django's console email backend by default, so messages and attachments appear in backend logs. Amazon SES is the selected production email provider. The existing `AFS_EMAIL_*` SMTP settings are its configuration boundary, but credentials and live delivery testing are deferred to the final infrastructure phase.
+The local environment uses Django's console email provider by default, so messages and attachments appear in backend logs. Production uses the integrated Amazon SES SMTP provider without changing this API contract. Credentials remain deployment secrets. Configuration and validation are documented in the [email delivery guide](../operations/EMAIL_DELIVERY.md).
 
 ## Rescheduling and permanent cancellation
 

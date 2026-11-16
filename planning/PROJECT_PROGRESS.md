@@ -6,7 +6,7 @@ This file records delivery status without duplicating requirements, database mod
 
 ## Current position
 
-- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, the complete event registration lifecycle, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, immutable cross-domain audit records, and self-hosted SeaweedFS integration.
+- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, the complete event registration lifecycle, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, immutable cross-domain audit records, self-hosted SeaweedFS integration, and the Amazon SES production configuration boundary.
 - **Under review:** global roles, permissions, authentication behavior, and frontend contracts.
 - **In progress:** organization, membership, invitations, onboarding, recruitment frontend validation, and CMS frontend validation.
 - **Deferred to the final infrastructure phase:** Amazon SES credentials and live email validation, plus production storage hardening.
@@ -23,7 +23,7 @@ This file records delivery status without duplicating requirements, database mod
 | 6. Content management | In progress | News, editable pages, and media are validated. |
 | 7. Events and check-in | Under review | Frontend confirms registration, capacity, cancellation, notification, ticket, and check-in contracts. |
 | 8. Administration and audit | In progress | Administration and traceability are validated. |
-| 9. Production services | In progress | SeaweedFS is integrated; email delivery and production hardening remain. |
+| 9. Production services | In progress | SeaweedFS and SES configuration are integrated; live deployment hardening remains. |
 
 ## Accounts and authentication
 
@@ -118,7 +118,6 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Add paginated confirmation, reschedule, and cancellation notification history.
 - [x] Translate event code, API fields, routes, tables, tests, Swagger, and documentation into English.
 - [x] Apply and verify the English event database schema.
-- [ ] Deferred: configure and validate Amazon SES in the final infrastructure phase.
 - [ ] Confirm the event contract with the frontend team.
 
 ## Integrated recruitment
@@ -147,7 +146,6 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Leave other applications open when the candidate declines an offer.
 - [x] Add migrations, automated tests, Swagger, and frontend documentation.
 - [ ] Confirm the recruitment contract with the frontend team.
-- [ ] Deferred: configure and validate Amazon SES in the final infrastructure phase.
 
 ## Content management
 
@@ -189,7 +187,26 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Add filtering, search, pagination, migrations, tests, and Swagger documentation.
 - [x] Send an immediate donor acknowledgement and preserve the record on email failure.
 - [ ] Confirm the donation form and dashboard contract with the frontend team.
-- [ ] Deferred: configure and validate Amazon SES in the final infrastructure phase.
+
+## Email delivery
+
+- [x] Keep console email as the safe local-development default.
+- [x] Integrate Amazon SES through Django's provider-independent SMTP interface.
+- [x] Require a Region, verified sender address, and Region-specific SES SMTP credentials when SES is selected.
+- [x] Require STARTTLS on port 587 or 2587 and configure a bounded connection timeout.
+- [x] Derive the standard SES SMTP endpoint while permitting an explicit regional endpoint.
+- [x] Reject incomplete or invalid SES configuration during application startup.
+- [x] Add a connection-only verification command that does not send email.
+- [x] Require an explicit recipient before the verification command sends one test message.
+- [x] Keep credentials out of command output, documentation values, and version control.
+- [x] Add provider configuration and command tests.
+- [x] Document SES identity verification, sandbox restrictions, production access, configuration, and validation.
+- [ ] Supply live SMTP credentials through the production secret manager.
+- [ ] Verify the production sending domain and DKIM records in the selected Region.
+- [ ] Request SES production access and run the connection and explicit delivery checks.
+- [ ] Configure operational monitoring for quotas, bounces, complaints, and sender reputation.
+
+The implementation source of truth is the [email delivery guide](../docs/operations/EMAIL_DELIVERY.md).
 
 ## File storage
 
@@ -228,12 +245,11 @@ The implementation source of truth is the [file storage guide](../docs/developme
 
 ## Next engineering task
 
-Prepare the Amazon SES production email configuration while preserving the current Django email interface and development console backend. Live credentials and delivery validation require the production account.
+Build backend-owned end-to-end acceptance coverage across the completed authentication, organization, membership, recruitment, CMS, donations, events, audit, storage, and email boundaries while the frontend remains in static development.
 
 ## Next implementation
 
-1. Complete the Amazon SES configuration boundary, production documentation, and provider-independent tests.
-2. Finish storage deployment hardening: HTTPS media delivery, secret management, backup and restore, retention, and monitoring.
-3. Build backend-owned end-to-end acceptance coverage while the frontend remains in static development.
-4. Confirm recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger.
-5. Update and run the complete Postman acceptance collection last.
+1. Build backend-owned end-to-end acceptance coverage while the frontend remains in static development.
+2. Confirm recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger.
+3. Finish production hardening: HTTPS media delivery, secret management, backup and restore, storage monitoring, live SES validation, and email reputation monitoring.
+4. Update and run the complete Postman acceptance collection last.

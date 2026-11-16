@@ -19,3 +19,4 @@ Before production, the team must approve and implement:
 Progress for this work is recorded only in [PROJECT_PROGRESS.md](../../planning/PROJECT_PROGRESS.md).
 
 The implemented storage topology, configuration, and migration commands are documented in the [file storage guide](../development/STORAGE.md).
+The implemented Amazon SES configuration and deployment validation procedure are documented in the [email delivery guide](./EMAIL_DELIVERY.md).
