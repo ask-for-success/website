@@ -13,3 +13,8 @@ backend/private_media/
 backups/
 .idea/
 .vscode/
+
+# Local coding-agent instructions and state
+AGENTS.md
+.agents/
+.codex/

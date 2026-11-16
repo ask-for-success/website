@@ -2,14 +2,7 @@
 
 **Last updated:** November 16, 2026
 
-This file records delivery status without duplicating requirements, database models, or API contracts.
-
-## Current position
-
-- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, administrator-managed account invitation and deactivation, organization models, membership lifecycle, recruitment foundation, the complete event registration lifecycle, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, immutable cross-domain audit records, self-hosted SeaweedFS integration, the Amazon SES production configuration boundary, and isolated cross-domain backend acceptance coverage.
-- **Under review:** global roles, permissions, authentication behavior, and frontend contracts.
-- **In progress:** organization, membership, invitations, onboarding, recruitment frontend validation, and CMS frontend validation.
-- **Deferred to the final infrastructure phase:** Amazon SES credentials and live email validation, plus production storage hardening.
+This tracker summarizes completed work, pending validation, and production-readiness tasks. Detailed requirements and API contracts are maintained in the [project documentation](../docs/README.md).
 
 ## Delivery phases
 
@@ -76,8 +69,6 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Add atomic department transfer with a required reason and history.
 - [x] Add member departure while preserving the account and durable membership.
 - [x] Add automated tests and Swagger documentation.
-- [x] Translate organization and membership code, APIs, tables, fields, tests, and documentation into English.
-- [x] Apply and verify the clean English organization and membership schemas.
 - [ ] Confirm the membership API contract with the frontend team.
 - [x] Connect recruitment acceptance to existing-membership reactivation.
 - [x] Add the authenticated self-service membership summary endpoint.
@@ -116,8 +107,6 @@ This file records delivery status without duplicating requirements, database mod
 - [x] Add capacity, registered, cancelled, checked-in, and remaining-seat statistics.
 - [x] Add filtered CSV participant export with readable dynamic-form answers.
 - [x] Add paginated confirmation, reschedule, and cancellation notification history.
-- [x] Translate event code, API fields, routes, tables, tests, Swagger, and documentation into English.
-- [x] Apply and verify the English event database schema.
 - [ ] Confirm the event contract with the frontend team.
 
 ## Integrated recruitment
@@ -206,7 +195,7 @@ This file records delivery status without duplicating requirements, database mod
 - [ ] Request SES production access and run the connection and explicit delivery checks.
 - [ ] Configure operational monitoring for quotas, bounces, complaints, and sender reputation.
 
-The implementation source of truth is the [email delivery guide](../docs/operations/EMAIL_DELIVERY.md).
+Implementation and deployment details are available in the [email delivery guide](../docs/operations/EMAIL_DELIVERY.md).
 
 ## File storage
 
@@ -264,11 +253,7 @@ Storage behavior is documented in the [file storage guide](../docs/development/S
 - [x] Keep acceptance files and messages isolated from development SeaweedFS and Amazon SES.
 - [x] Run the acceptance suite successfully in Docker.
 
-## Next engineering task
-
-Confirm the completed API contracts with the frontend team through Swagger, then begin production hardening after the off-host backup destination and deployment environment are approved.
-
-## Next implementation
+## Next steps
 
 1. Confirm account-management, audit, recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger.
 2. Approve an association-controlled off-host backup destination and the production deployment environment.

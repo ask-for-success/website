@@ -7,4 +7,4 @@ When sources conflict, use this priority:
 3. `AFS_Master_Product_Technical_Specification_V1.pdf`, only for subjects missing from the primary source;
 4. older drafts and diagrams.
 
-Add any unresolved conflict to the [open questions](../../../planning/requirements/OPEN_QUESTIONS_V1.md) before implementation.
+If this priority does not resolve a conflict, record the approved outcome in [DECISIONS.md](../../architecture/DECISIONS.md) before implementation.

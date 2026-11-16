@@ -1,10 +1,10 @@
 # Project documentation
 
-This file is the single entry point for project documentation. Each subject has one source of truth.
+Use this index to find the current API, business, architecture, database, development, and operations documentation.
 
 ## Find the right document
 
-| Need | Source of truth |
+| Need | Document |
 |---|---|
 | View available endpoints, required fields, and test the API | [Swagger](http://localhost:8000/api/docs/) |
 | Read the raw OpenAPI schema | [OpenAPI schema](http://localhost:8000/api/schema/) |
@@ -30,13 +30,12 @@ This file is the single entry point for project documentation. Each subject has 
 | Configure and validate Amazon SES email delivery | [Email delivery guide](./operations/EMAIL_DELIVERY.md) |
 | Prepare for production | [Operations](./operations/OPERATIONS.md) |
 | Check progress and the next step | [Project progress](../planning/PROJECT_PROGRESS.md) |
-| Answer unresolved product questions | [Open questions](../planning/requirements/OPEN_QUESTIONS_V1.md) |
 | Review the original specifications | [Functional sources](./business/sources/SOURCES.md) |
 
-## Documentation rules
+## Maintenance guidelines
 
 - Swagger describes only the API that is currently available.
 - The functional scope describes all V1 requirements, including features that are not implemented yet.
 - The database document describes only implemented tables.
 - The progress tracker records status and links to detailed documents.
-- Documents link to the source of truth instead of copying it.
+- Link to the relevant detailed document instead of copying the same content into multiple files.

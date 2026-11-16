@@ -1,15 +1,14 @@
-# Working Process
+# Delivery workflow
 
-Handle each domain separately in this order:
+Use this workflow for each backend domain:
 
-1. review its section in the functional scope;
-2. resolve any blocking open questions;
-3. approve models, permissions, and API behavior;
-4. implement models and migrations;
-5. implement endpoints;
-6. add automated tests;
-7. verify the OpenAPI contract in Swagger;
-8. update the project progress tracker;
-9. obtain product-owner review before starting the next domain.
+1. Confirm the approved scope and acceptance criteria.
+2. Define the data model, permissions, and API contract.
+3. Implement models, migrations, business rules, and endpoints.
+4. Add automated tests for successful, invalid, and unauthorized requests.
+5. Verify the OpenAPI contract in Swagger.
+6. Update the relevant technical documentation.
+7. Update the project progress tracker.
+8. Submit the completed contract for product and frontend review.
 
-A feature is complete only when its code, applicable migrations, tests, and API contract are complete.
+A feature is complete when its implementation, migrations, tests, API contract, and documentation are ready for review.
