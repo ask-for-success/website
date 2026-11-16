@@ -215,3 +215,21 @@ Creating a membership invitation automatically attempts to email the invited per
 The invitation is the business record and email is only its delivery channel. A delivery failure is stored as `failed` with a bounded error and never rolls back the inactive account, pending membership, initial assignment, onboarding record, or active invitation. Successful delivery records its sent time. Automatic retry remains outside V1.
 
 The creation response exposes the raw setup token only while Django `DEBUG` is enabled for local development and testing. Production responses omit the field completely. The same invitation operation uses the console provider in development and the integrated Amazon SES SMTP provider in production without changing the API contract.
+
+## D-037 — Administrator-managed account lifecycle
+
+An account administrator can search accounts, create a content-manager account,
+optionally grant HR permission, change managed access, and deactivate or invite
+an inactive account to reactivate. A newly created or returning account remains
+inactive until the person accepts a single-use password-setup link. Login email
+is immutable.
+
+Deactivation requires a reason, blocks authentication, invalidates the password,
+revokes refresh tokens, removes all groups and direct permissions, removes staff
+access, and cancels active setup invitations. It never deletes the account or
+changes membership status. Member departure remains a separate HR operation.
+
+An administrator cannot deactivate their own account, and superusers remain
+outside the operational account-management API. Roles removed during
+deactivation are not restored automatically. Invitation creation and acceptance,
+deactivation, and access changes are recorded in the immutable audit trail.

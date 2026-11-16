@@ -12,6 +12,17 @@ class CanManageAccessAssignments(BasePermission):
         )
 
 
+class CanManageAccounts(BasePermission):
+    message = "You do not have permission to manage accounts."
+
+    def has_permission(self, request, view) -> bool:
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.has_perm("accounts.manage_accounts")
+        )
+
+
 def is_content_manager(user) -> bool:
     return bool(
         user

@@ -29,8 +29,16 @@ The following concepts are intentionally not global roles:
 - Replacing managed access preserves unrelated Django groups and permissions.
 - A non-superuser cannot change their own access.
 - Unknown and duplicate role or permission keys are rejected.
+- Account administrators can search accounts, create invited content managers,
+  and securely deactivate or reactivate accounts through the account-management
+  API.
+- Access changes are explicitly audited with the previous and resulting managed
+  role and permission state.
 
 The frontend should use the current-access endpoint shown in Swagger instead of inferring authorization from email, staff status, or page location.
+
+The complete administration lifecycle is documented in the
+[account management guide](./ACCOUNT_MANAGEMENT.md).
 
 ## Initial administrator bootstrap
 
@@ -42,7 +50,7 @@ docker compose run --rm backend python manage.py createsuperuser
 
 The Django superuser is not intended for normal daily administration. It bypasses permission checks, can use Django's technical administration site, and exists to create or recover the first operational administrator.
 
-Log in through the normal authentication API, authorize Swagger or Postman with the returned access token, and assign `account_administrator` to the intended operational administrator. The future frontend administration dashboard should then use that regular account and the protected access APIs. Later assignments do not require the superuser.
+Log in through the normal authentication API, authorize Swagger or Postman with the returned access token, and assign `account_administrator` to the intended operational administrator. The frontend administration dashboard should then use that regular account and the protected account-management, access, and audit APIs. Later assignments do not require the superuser.
 
 For manual review, import [AFS_Access_Control.postman_collection.json](./AFS_Access_Control.postman_collection.json) and set its `admin_email`, `admin_password`, and `target_user_id` variables.
 

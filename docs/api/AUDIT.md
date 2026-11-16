@@ -35,6 +35,9 @@ The record list accepts:
 The current implementation records:
 
 - account registration and successful login;
+- administrator-created account invitations and invitation acceptance;
+- account deactivation and reactivation invitations with required reasons;
+- access-assignment changes with previous and resulting role state;
 - successful authenticated create, update, delete, and action requests across account management, access control, organization, CMS, events, recruitment, and membership APIs;
 - every recruitment application status change;
 - membership creation and reactivation;
@@ -51,7 +54,7 @@ Failed requests are not recorded as completed actions. Ordinary read-only page a
 
 ## Stored data
 
-Each record contains its domain, action, actor, target type and identifier, normalized API operation, HTTP method, request path without query parameters, related application or membership when applicable, previous state, new state, optional reason, and timestamp. State snapshots use only approved status, assignment identifiers, and the non-sensitive `national_id_collected` boolean.
+Each record contains its domain, action, actor, target type and identifier, normalized API operation, HTTP method, request path without query parameters, related application or membership when applicable, previous state, new state, optional reason, and timestamp. State snapshots use only approved status, assignment identifiers, non-sensitive access booleans, and the non-sensitive `national_id_collected` boolean.
 
 Audit records never contain passwords, password hashes, invitation tokens, token hashes, CV files or contents, national ID values, or arbitrary request payloads. Unsupported state fields are rejected by model validation.
 

@@ -19,6 +19,19 @@ Django models and migrations are the source of truth. [AFS_Database.dbml](./AFS_
 
 A database constraint requires every active account to have a non-empty phone number. Public registration still requires the phone number immediately.
 
+## Account invitations
+
+The `account_invitations` table links an inactive account to the administrator
+who created its setup or reactivation invitation. It stores the invitation
+purpose, single-use token hash, state, expiration, usage or cancellation time,
+email-delivery state, sent time, bounded delivery error, and timestamps. A
+partial unique constraint permits only one active invitation per account.
+
+New content managers remain inactive until accepting the setup invitation.
+Deactivation invalidates the password, removes access assignments, and preserves
+the user row and every referenced business record. Reactivation requires a new
+invitation and does not restore old roles automatically.
+
 ## Departments and positions
 
 A department has a UUID, unique case-insensitive name, description, active state, and timestamps. A position belongs to exactly one department. Position names are unique case-insensitively within a department, while the same name may exist in another department.
@@ -99,7 +112,7 @@ The `audit_records` table stores immutable actor-centered activity across accoun
 
 At least one business target is required through a generic target, application, or membership. Application-decision records require an application, and membership-lifecycle records require a membership. Acceptance can reference both so the decision and resulting membership change remain correlated.
 
-Audit state snapshots accept only status, department, position, assignment identifiers, and the non-sensitive national-ID-collected boolean. Passwords, tokens, CV contents, national ID values, and arbitrary request payloads are structurally excluded. Business targets and actors use protected foreign keys so their audit history cannot be removed accidentally.
+Audit state snapshots accept only status, department, position, assignment identifiers, non-sensitive account-access booleans, and the non-sensitive national-ID-collected boolean. Passwords, tokens, CV contents, national ID values, and arbitrary request payloads are structurally excluded. Business targets and actors use protected foreign keys so their audit history cannot be removed accidentally.
 
 ## Token infrastructure
 

@@ -6,7 +6,7 @@ This file records delivery status without duplicating requirements, database mod
 
 ## Current position
 
-- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, organization models, membership lifecycle, recruitment foundation, the complete event registration lifecycle, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, immutable cross-domain audit records, self-hosted SeaweedFS integration, the Amazon SES production configuration boundary, and isolated cross-domain backend acceptance coverage.
+- **Completed:** Django, PostgreSQL, Docker, user accounts, authentication, administrator-managed account invitation and deactivation, organization models, membership lifecycle, recruitment foundation, the complete event registration lifecycle, QR tickets, scanner assignments, check-in, the structured public-page and media CMS foundation, the fixed donation-interest workflow, immutable cross-domain audit records, self-hosted SeaweedFS integration, the Amazon SES production configuration boundary, and isolated cross-domain backend acceptance coverage.
 - **Under review:** global roles, permissions, authentication behavior, and frontend contracts.
 - **In progress:** organization, membership, invitations, onboarding, recruitment frontend validation, and CMS frontend validation.
 - **Deferred to the final infrastructure phase:** Amazon SES credentials and live email validation, plus production storage hardening.
@@ -232,6 +232,13 @@ Storage behavior is documented in the [file storage guide](../docs/development/S
 
 ## Administration and audit
 
+- [x] Add paginated administrator account search and active-state and role filters.
+- [x] Add invitation-based content-manager account creation with optional HR access.
+- [x] Add secure account deactivation with a required reason, token revocation, password invalidation, and access removal.
+- [x] Add invitation-based reactivation without automatic privilege restoration.
+- [x] Prevent self-deactivation and operational management of superusers.
+- [x] Keep account state separate from membership departure and preserve all business history.
+- [x] Audit account invitations, activation, deactivation, and access-assignment changes.
 - [x] Add immutable audit records with actor, action, timestamp, target, previous state, new state, and reason.
 - [x] Record recruitment application status changes.
 - [x] Record membership creation, reactivation, onboarding, transfer, departure, and invitation actions.
@@ -244,7 +251,7 @@ Storage behavior is documented in the [file storage guide](../docs/development/S
 - [x] Exclude failed mutations and routine read-only browsing from completed activity.
 - [x] Search actors by UUID, email, first name, last name, or full name.
 - [x] Add an actor timeline with roles, permissions, membership summary, activity count, and last activity time.
-- [ ] Confirm the audit-list contract with the administration frontend.
+- [ ] Confirm the account-management and audit contracts with the administration frontend.
 
 ## Backend acceptance
 
@@ -262,7 +269,7 @@ Confirm the completed API contracts with the frontend team through Swagger, then
 
 ## Next implementation
 
-1. Confirm recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger.
+1. Confirm account-management, audit, recruitment, membership, content, member-announcement, donations, events, and organization contracts with the frontend team through Swagger.
 2. Approve an association-controlled off-host backup destination and the production deployment environment.
 3. Finish production hardening: HTTPS media delivery, secret management, backup and restore, storage monitoring, live SES validation, and email reputation monitoring.
 4. Update and run the complete Postman acceptance collection last.

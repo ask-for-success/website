@@ -1,11 +1,30 @@
 import uuid
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Lower
 
 from .managers import UserManager
+
+
+class AccountInvitationStatus(models.TextChoices):
+    ACTIVE = "active", "Active"
+    USED = "used", "Used"
+    CANCELLED = "cancelled", "Cancelled"
+    EXPIRED = "expired", "Expired"
+
+
+class AccountInvitationPurpose(models.TextChoices):
+    INITIAL_SETUP = "initial_setup", "Initial setup"
+    REACTIVATION = "reactivation", "Reactivation"
+
+
+class AccountInvitationEmailStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    SENT = "sent", "Sent"
+    FAILED = "failed", "Failed"
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -69,3 +88,64 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         return self.email
+
+
+class AccountInvitation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="account_invitations",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_account_invitations",
+    )
+    purpose = models.CharField(
+        max_length=24,
+        choices=AccountInvitationPurpose.choices,
+    )
+    token_hash = models.CharField(max_length=64, unique=True, editable=False)
+    status = models.CharField(
+        max_length=16,
+        choices=AccountInvitationStatus.choices,
+        default=AccountInvitationStatus.ACTIVE,
+    )
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    email_delivery_status = models.CharField(
+        max_length=16,
+        choices=AccountInvitationEmailStatus.choices,
+        default=AccountInvitationEmailStatus.PENDING,
+    )
+    email_sent_at = models.DateTimeField(null=True, blank=True)
+    email_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "account_invitations"
+        ordering = ("-created_at",)
+        constraints = (
+            models.UniqueConstraint(
+                fields=("user",),
+                condition=models.Q(status=AccountInvitationStatus.ACTIVE),
+                name="account_invitations_one_active_per_user",
+            ),
+        )
+
+    def clean(self) -> None:
+        super().clean()
+        if (
+            self.status == AccountInvitationStatus.ACTIVE
+            and self.user_id
+            and self.user.is_active
+        ):
+            raise ValidationError(
+                {"user": "An active account cannot have a setup invitation."}
+            )
+
+    def __str__(self) -> str:
+        return f"Account invitation for {self.user.email}"

@@ -18,6 +18,25 @@ Table users {
   updated_at timestamptz [not null]
 }
 
+Table account_invitations {
+  id uuid [pk, not null]
+  user_id uuid [not null, ref: > users.id]
+  created_by_id uuid [not null, ref: > users.id]
+  purpose varchar(24) [not null, note: "Initial setup or reactivation"]
+  token_hash varchar(64) [not null, unique]
+  status varchar(16) [not null, default: "active"]
+  expires_at timestamptz [not null]
+  used_at timestamptz
+  cancelled_at timestamptz
+  email_delivery_status varchar(16) [not null, default: "pending"]
+  email_sent_at timestamptz
+  email_error text [not null, default: ""]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "A partial unique index permits only one active invitation per account. The raw setup token is never stored."
+}
+
 Table departments {
   id uuid [pk, not null]
   name varchar(150) [not null]

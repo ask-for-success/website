@@ -10,6 +10,7 @@ This file is the single entry point for project documentation. Each subject has 
 | Read the raw OpenAPI schema | [OpenAPI schema](http://localhost:8000/api/schema/) |
 | Understand tokens and authentication | [Authentication guide](./api/AUTHENTICATION.md) |
 | Understand roles and permissions | [Authorization guide](./api/AUTHORIZATION.md) |
+| Manage accounts, invitations, activation, and deactivation | [Account management guide](./api/ACCOUNT_MANAGEMENT.md) |
 | Understand membership lifecycle and invitations | [Membership guide](./api/MEMBERSHIPS.md) |
 | Understand events, registrations, and check-in | [Events guide](./api/EVENTS.md) |
 | Understand public-page, news, gallery, and media CMS behavior | [Content guide](./api/CONTENT.md) |

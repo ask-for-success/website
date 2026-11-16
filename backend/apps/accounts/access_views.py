@@ -6,6 +6,9 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.audit.models import AuditAction, AuditDomain
+from apps.audit.services import record_audit_event
+
 from .access_serializers import (
     AccessOptionsSerializer,
     CurrentAccessSerializer,
@@ -62,6 +65,16 @@ def build_user_access_assignment(user: User) -> dict:
         "roles": get_user_role_keys(user),
         "direct_permissions": get_user_direct_permission_codes(user),
         "permissions": get_user_permission_codes(user),
+    }
+
+
+def build_access_audit_state(user: User) -> dict:
+    role_keys = set(get_user_role_keys(user))
+    direct_permissions = set(get_user_direct_permission_codes(user))
+    return {
+        "account_administrator_access": "account_administrator" in role_keys,
+        "content_manager_access": "content_manager" in role_keys,
+        "hr_access": "accounts.manage_hr" in direct_permissions,
     }
 
 
@@ -178,6 +191,7 @@ class UserAccessAssignmentView(APIView):
         requested_permissions = managed_permissions.filter(
             codename__in=requested_permission_codenames
         )
+        previous_state = build_access_audit_state(target_user)
 
         with transaction.atomic():
             target_user.groups.remove(*managed_groups)
@@ -185,5 +199,18 @@ class UserAccessAssignmentView(APIView):
             target_user.user_permissions.remove(*managed_permissions)
             target_user.user_permissions.add(*requested_permissions)
 
-        clear_permission_cache(target_user)
+            clear_permission_cache(target_user)
+            record_audit_event(
+                domain=AuditDomain.ACCESS_CONTROL,
+                action=AuditAction.ACCESS_ASSIGNMENT_CHANGED,
+                actor=request.user,
+                target_type="user",
+                target_id=target_user.id,
+                operation="access_control:user_access_assignment",
+                request_method="PUT",
+                request_path=request.path,
+                previous_state=previous_state,
+                new_state=build_access_audit_state(target_user),
+            )
+
         return Response(build_user_access_assignment(target_user))

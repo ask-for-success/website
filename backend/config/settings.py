@@ -271,6 +271,9 @@ SPECTACULAR_SETTINGS = {
         "MembershipInvitationStatus": (
             "apps.memberships.models.MembershipInvitationStatus"
         ),
+        "AccountInvitationPurpose": (
+            "apps.accounts.models.AccountInvitationPurpose"
+        ),
         "EventRegistrationStatus": (
             "apps.events.models.EventRegistrationStatus"
         ),

@@ -18,6 +18,22 @@ class AuditDomain(models.TextChoices):
 class AuditAction(models.TextChoices):
     ACCOUNT_REGISTERED = "accounts.registered", "Account registered"
     ACCOUNT_LOGIN = "accounts.login", "Account login"
+    ACCOUNT_INVITATION_CREATED = (
+        "accounts.invitation_created",
+        "Account invitation created",
+    )
+    ACCOUNT_INVITATION_ACCEPTED = (
+        "accounts.invitation_accepted",
+        "Account invitation accepted",
+    )
+    ACCOUNT_DEACTIVATED = (
+        "accounts.deactivated",
+        "Account deactivated",
+    )
+    ACCESS_ASSIGNMENT_CHANGED = (
+        "access_control.assignment_changed",
+        "Access assignment changed",
+    )
     API_CREATED = "api.created", "API record created"
     API_UPDATED = "api.updated", "API record updated"
     API_DELETED = "api.deleted", "API record deleted"
@@ -62,6 +78,11 @@ class AuditAction(models.TextChoices):
 
 
 ALLOWED_STATE_KEYS = {
+    "account_active",
+    "account_administrator_access",
+    "content_manager_access",
+    "hr_access",
+    "staff_access",
     "application_status",
     "membership_status",
     "onboarding_status",
