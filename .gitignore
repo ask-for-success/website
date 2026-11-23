@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Local builds and Vite cache
+dist/
+build/
+.vite/
+
+# Local environment files
+.env
+.env.*
+
+# Logs
+*.log

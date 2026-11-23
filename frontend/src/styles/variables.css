@@ -1,0 +1,75 @@
+
+:root {
+  --color-surface-page: #fafafb;
+  --color-surface-default: #ffffff;
+  --color-surface-brand-strong: #a682d4;
+  --color-surface-brand-subtle: #f0eaf8;
+  --color-text-heading: #1f1f1f;
+  --color-text-body: #374151;
+  --color-text-muted: #6b7280;
+  --color-text-action: #6a2fb8;
+  --color-text-inverse: #ffffff;
+  --color-button-primary-default: var(--color-text-action);
+  --color-button-primary-hover: #552693;
+  --color-border-default: #e5e7eb;
+  --color-border-brand-subtle: #c3ace3;
+
+  --font-family-base: 'Poppins', sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --type-display-size: 56px;
+  --type-display-line-height: 64px;
+  --type-h1-size: 44px;
+  --type-h1-line-height: 52px;
+  --type-h2-size: 36px;
+  --type-h2-line-height: 44px;
+  --type-h3-size: 28px;
+  --type-h3-line-height: 36px;
+  --type-h4-size: 22px;
+  --type-h4-line-height: 30px;
+  --type-h5-size: 18px;
+  --type-h5-line-height: 26px;
+  --type-body-lg-size: 18px;
+  --type-body-lg-line-height: 28px;
+  --type-body-md-size: 16px;
+  --type-body-md-line-height: 24px;
+  --type-body-sm-size: 14px;
+  --type-body-sm-line-height: 20px;
+  --type-caption-size: 12px;
+  --type-caption-line-height: 16px;
+  --type-button-md-size: 14px;
+  --type-button-md-line-height: 20px;
+
+  --layout-content-max: 1280px;
+  --layout-page-margin-mobile: 20px;
+  --layout-gutter: 32px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-card: var(--radius-lg);
+  --radius-image: var(--radius-md);
+  --radius-button: 9999px;
+  --shadow-sm: 0 1px 3px rgba(31, 31, 31, 0.08), 0 1px 2px rgba(31, 31, 31, 0.06);
+  --shadow-md: 0 8px 24px rgba(31, 31, 31, 0.08), 0 4px 8px rgba(31, 31, 31, 0.06);
+  --shadow-lg: 0 24px 48px rgba(31, 31, 31, 0.12), 0 12px 24px rgba(31, 31, 31, 0.08);
+
+  /* Aliases used by existing page styles */
+  --primary: var(--color-text-action);
+  --secondary: var(--color-surface-brand-strong);
+  --background: var(--color-surface-page);
+  --light-purple: var(--color-surface-brand-subtle);
+  --white: var(--color-surface-default);
+  --text-dark: var(--color-text-heading);
+  --text-muted: var(--color-text-muted);
+  --border: var(--color-border-default);
+  --shadow: var(--shadow-sm);
+  --color-green: var(--primary);
+  --color-green-dark: var(--color-button-primary-hover);
+  --color-cream: var(--background);
+  --color-muted: var(--text-muted);
+  --color-ink: var(--text-dark);
+  --content-width: 1200px;
+  --container-width: var(--content-width);
+}
