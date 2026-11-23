@@ -2,19 +2,24 @@ import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
 
 const links = [
+  { to: '/', label: 'Home' },
   { to: '/about', label: 'About' },
-  { to: '/get-involved', label: 'Get involved' },
+  { to: '/get-involved', label: 'Get Involved' },
   { to: '/gallery', label: 'Gallery' },
   { to: '/events', label: 'Events' },
-  { to: '/news', label: 'Blog/News' },
+  { to: '/news', label: 'News' },
 ];
+
+function revealFocusedLink({ currentTarget, target }) {
+  if (currentTarget.scrollWidth > currentTarget.clientWidth) {
+    target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+}
 
 export default function Navbar() {
   return (
     <header className="site-header">
-      <nav className="navbar container" aria-label="Main navigation">
-
-        {/* LOGO */}
+      <nav className="navbar site-shell" aria-label="Main navigation">
         <Link className="brand" to="/" aria-label="AFS Home">
           <img
             src="/assets/images/logos/AFS logo.png"
@@ -23,28 +28,26 @@ export default function Navbar() {
           />
         </Link>
 
-        {/* CENTER LINKS */}
-        <div className="nav-links">
-          {links.map((link) => (
+        <div className="nav-links" onFocus={revealFocusedLink}>
+          {links.map(({ to, label }) => (
             <NavLink
-              key={link.to}
-              to={link.to}
+              key={to}
+              to={to}
+              end={to === '/'}
               className={({ isActive }) =>
                 isActive ? 'nav-link active' : 'nav-link'
               }
             >
-              {link.label}
+              {label}
             </NavLink>
           ))}
         </div>
 
-        {/* RIGHT ACTIONS */}
         <div className="navbar-actions">
-          <Link to="/get-involved" className="donate-button">
+          <Link to="/get-involved#donate" className="donate-button">
             Donate
           </Link>
         </div>
-
       </nav>
     </header>
   );

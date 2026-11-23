@@ -7,6 +7,7 @@ import App from './App.jsx';
 import './styles/variables.css';
 import './styles/global.css';
 import './styles/components.css';
+import './styles/details.css';
 import './styles/responsive.css';
 
 // Render React application

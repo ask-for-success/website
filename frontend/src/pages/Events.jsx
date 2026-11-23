@@ -1,19 +1,18 @@
 import React from 'react';
-import events, { pastEvents } from '../data/events.js';
-import { ArrowRight, MapPin } from 'lucide-react';
-
-const registrationLink = (eventTitle) =>
-  `mailto:askforsuccess@gmail.com?subject=${encodeURIComponent(`Registration for ${eventTitle}`)}`;
+import EventRegistration from '../components/EventRegistration.jsx';
+import UpcomingEventCard, { EventDetailsLink } from '../components/UpcomingEventCard.jsx';
+import events, { featuredEvent, pastEvents, todayInMorocco } from '../data/events.js';
 
 export default function Events() {
+  const today = todayInMorocco();
+  const hasUpcomingEvents = events.some((event) => event.dateTime >= today);
   return (
     <>
       <section className="events-hero" aria-labelledby="events-hero-title">
-        <div className="container events-hero-layout">
-          <div className="events-hero-content">
+        <div className="site-shell events-hero-layout">
+          <div className="events-hero-content listing-intro">
             <h1 id="events-hero-title">
-              Events that
-              <span>open doors</span>
+              Events that <span>open doors</span>
             </h1>
 
             <p>
@@ -21,15 +20,15 @@ export default function Events() {
               partners and each other. Every event is free for students.
             </p>
 
-            <a className="events-hero-button" href="#upcoming-events">
-              See upcoming events
+            <a className="home-button home-button--large home-button--filled" href="#upcoming-events">
+              {hasUpcomingEvents ? 'See upcoming events' : 'See more events'}
             </a>
           </div>
 
           <div className="events-hero-image">
             <img
-              src="/assets/images/events/ae7e326ca36d4f5be0294fbfa83ac4ee706843af.jpg"
-              alt="AFS students and volunteers gathered at an outreach event"
+              src="/assets/images/gallery/Youth Summit 2026.png"
+              alt="Students gathered around workshop equipment"
               fetchPriority="high"
             />
           </div>
@@ -37,118 +36,64 @@ export default function Events() {
       </section>
 
       <section className="next-event-section" aria-labelledby="next-event-title">
-        <div className="container">
-          <header className="next-event-heading">
-            <h2 id="next-event-title">Next event</h2>
-            <p>Registration is open.</p>
+        <div className="site-shell">
+          <header className="listing-section-title events-section-title">
+            <h2 id="next-event-title">{featuredEvent.dateTime >= today ? 'Next event' : 'Featured event'}</h2>
+            <p>{today <= featuredEvent.registrationCloses ? 'Registration is open.' : 'Registration has closed.'}</p>
           </header>
 
           <div className="next-event-grid">
             <article className="next-event-card">
               <div className="next-event-photo">
                 <img
-                  src="/assets/images/events/ae7e326ca36d4f5be0294fbfa83ac4ee706843af.jpg"
-                  alt="AFS participants gathered outdoors at an event in Ain Chok"
+                  src={featuredEvent.image}
+                  alt={featuredEvent.imageAlt}
                   loading="lazy"
                 />
                 <span className="next-event-location">
-                  <MapPin size={13} aria-hidden="true" />
-                  Casablanca, Ain Chok
+                  <img src="/assets/icons/home/event-location.svg" alt="" />
+                  {featuredEvent.locationBadge}
                 </span>
               </div>
 
               <div className="next-event-card-content">
-                <time className="next-event-date" dateTime="2026-10-31">
-                  31 OCT 2026
+                <time className="next-event-date" dateTime={featuredEvent.dateTime}>
+                  {featuredEvent.date}
                 </time>
-                <h3>Next Morocco Youth Summit 2026</h3>
-                <p>
-                  Join over 600 student delegates, startup founders, and
-                  mentors for two days of collaborative innovation, keynote
-                  addresses, and national hackathon presentations.
-                </p>
-                <a
-                  className="next-event-outline-button"
-                  href={registrationLink('Next Morocco Youth Summit 2026')}
-                >
-                  Register now
-                  <span aria-hidden="true"><ArrowRight size={13} /></span>
-                </a>
+                <h3>{featuredEvent.title}</h3>
+                <p>{featuredEvent.description}</p>
+                <EventDetailsLink event={featuredEvent} />
               </div>
             </article>
 
-            <aside className="next-event-panel" aria-label="Event details">
-              <h3>Starts in</h3>
-              <div
-                className="next-event-countdown"
-                aria-label="6 days, 14 hours, 32 minutes"
-              >
-                <div><strong>06</strong><span>days</span></div>
-                <div><strong>14</strong><span>hours</span></div>
-                <div><strong>32</strong><span>min</span></div>
-              </div>
-
-              <dl className="next-event-facts">
-                <div><dt>Date</dt><dd>31 Oct 2026</dd></div>
-                <div><dt>Time</dt><dd>9:00 – 18:00</dd></div>
-                <div><dt>Venue</dt><dd>Ain Chok, Casablanca</dd></div>
-                <div><dt>Seats left</dt><dd>112 of 600</dd></div>
-                <div><dt>Price</dt><dd>Free for students</dd></div>
-              </dl>
-
-              <a
-                className="next-event-register-button"
-                href={registrationLink('Next Morocco Youth Summit 2026')}
-              >
-                Register now
-              </a>
-              <p className="next-event-deadline">
-                Registration closes on 28 October.
-              </p>
-            </aside>
+            <EventRegistration event={featuredEvent} />
           </div>
         </div>
       </section>
 
-      <section className="events-upcoming-section" id="upcoming-events">
-        <div className="container">
-          <header className="events-upcoming-heading">
-            <h2>Upcoming events</h2>
-            <p>Pick one and save your seat.</p>
+      <section className="events-upcoming-section" id="upcoming-events" tabIndex={-1} aria-labelledby="upcoming-events-title">
+        <div className="site-shell">
+          <header className="listing-section-title events-section-title">
+            <h2 id="upcoming-events-title">{hasUpcomingEvents ? 'Upcoming events' : 'More events'}</h2>
+            <p>{hasUpcomingEvents ? 'Explore the schedule.' : 'Browse earlier workshops and outreach events.'}</p>
           </header>
 
           <div className="events-upcoming-grid">
-            {events.map((event) => (
-              <article className="events-upcoming-card" key={event.id}>
-                <time className="events-upcoming-date" dateTime={event.dateTime}>
-                  {event.date}
-                </time>
-                <h3>{event.title}</h3>
-                <p>{event.description}</p>
-                <a
-                  className="events-upcoming-register"
-                  href={registrationLink(event.title)}
-                  aria-label={`Register for ${event.title}`}
-                >
-                  Register now
-                  <span aria-hidden="true"><ArrowRight size={13} /></span>
-                </a>
-              </article>
-            ))}
+            {events.map((event) => <UpcomingEventCard key={event.slug} event={event} />)}
           </div>
         </div>
       </section>
 
       <section className="events-past-section" aria-labelledby="past-events-title">
-        <div className="container">
-          <header className="events-past-heading">
+        <div className="site-shell">
+          <header className="listing-section-title events-section-title">
             <h2 id="past-events-title">Past events</h2>
             <p>What we’ve done together so far.</p>
           </header>
 
           <div className="events-past-grid">
             {pastEvents.map((event) => (
-              <article className="events-past-card" key={event.id}>
+              <article className="events-past-card" key={event.slug}>
                 <div className="events-past-photo">
                   <img src={event.image} alt={event.imageAlt} loading="lazy" />
                 </div>
@@ -158,9 +103,10 @@ export default function Events() {
                   </time>
                   <h3>{event.title}</h3>
                   <p className="events-past-location">
-                    <MapPin size={14} aria-hidden="true" />
+                    <img src="/assets/icons/events/past-location.svg" alt="" />
                     {event.location}
                   </p>
+                  <EventDetailsLink event={event} />
                 </div>
               </article>
             ))}

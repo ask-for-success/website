@@ -1,4 +1,5 @@
 import React from 'react';
+
 const stats = [
   { value: '1,200+', label: 'Students supported' },
   { value: '40+', label: 'Events organized' },
@@ -9,15 +10,12 @@ const stats = [
 export default function StatsSection() {
   return (
     <section className="stats-section" aria-label="Our impact">
-
-      {/* Decorative lines */}
-      <div className="stats-decoration stats-decoration-left" aria-hidden="true">
-        {Array.from({ length: 7 }, (_, i) => (
-          <span key={i}></span>
-        ))}
-      </div>
-
-      <div className="container stats-grid">
+      <img
+        className="stats-decoration stats-decoration-left"
+        src="/assets/images/stats/stats-left.svg"
+        alt=""
+      />
+      <div className="site-shell stats-grid">
         {stats.map((stat) => (
           <div className="stat" key={stat.label}>
             <strong>{stat.value}</strong>
@@ -26,12 +24,11 @@ export default function StatsSection() {
         ))}
       </div>
 
-      <div className="stats-decoration stats-decoration-right" aria-hidden="true">
-        {Array.from({ length: 7 }, (_, i) => (
-          <span key={i}></span>
-        ))}
-      </div>
-
+      <img
+        className="stats-decoration stats-decoration-right"
+        src="/assets/images/stats/stats-right.svg"
+        alt=""
+      />
     </section>
   );
 }

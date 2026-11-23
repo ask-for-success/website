@@ -7,7 +7,9 @@ import About from './pages/About.jsx';
 import GetInvolved from './pages/GetInvolved.jsx';
 import Gallery from './pages/Gallery.jsx';
 import Events from './pages/Events.jsx';
+import EventDetails from './pages/EventDetails.jsx';
 import News from './pages/News.jsx';
+import ArticleDetails from './pages/ArticleDetails.jsx';
 
 function App() {
     return (
@@ -19,7 +21,9 @@ function App() {
                     <Route path="/get-involved" element={<GetInvolved />} />
                     <Route path="/gallery" element={<Gallery />} />
                     <Route path="/events" element={<Events />} />
+                    <Route path="/events/:slug" element={<EventDetails />} />
                     <Route path="/news" element={<News />} />
+                    <Route path="/news/:slug" element={<ArticleDetails />} />
                 </Route>
             </Routes>
         </BrowserRouter>

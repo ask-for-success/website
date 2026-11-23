@@ -1,4 +1,5 @@
 export const featuredArticle = {
+  slug: 'salmas-story',
   category: 'Student story',
   date: '20 Oct 2026',
   dateTime: '2026-10-20',
@@ -11,11 +12,41 @@ export const featuredArticle = {
   authorImage: '/assets/images/blog/latest4.jpg',
   image: '/assets/images/blog/heroblog.jpg',
   imageAlt: 'Students smiling together at an AFS gathering',
+  body: [
+    {
+      heading: 'A workshop she almost skipped',
+      paragraphs: [
+        'Salma grew up in Ouarzazate, far from the universities she read about online. When a teacher told her about an AFS coding workshop at her school, she signed up mostly to keep a friend company.',
+        'By the end of the afternoon she had built her first web page, and asked one of the volunteers how she could learn more. That question led to her first mentor.',
+      ],
+      quote: '“I didn’t know you could just ask. Once I did, people kept opening doors for me.”',
+      quoteAuthor: 'Salma, AFS student',
+    },
+    {
+      heading: 'Two mentors, one plan',
+      paragraphs: [
+        'Her first mentor, a software engineer in Casablanca, helped her plan her last two years of high school: which subjects to focus on, which competitions to enter and how to prepare for entrance exams.',
+      ],
+      figure: {
+        image: '/assets/images/gallery/Youth Summit 2026.png',
+        alt: 'Young people gathered around workshop equipment',
+        caption: 'Students at an AFS coding workshop during the Youth Summit 2026.',
+      },
+      continuation: 'A second mentor joined when it was time to apply. Together they worked on her motivation letters and practised interviews over video calls.',
+    },
+    {
+      heading: 'Paying it forward',
+      paragraphs: [
+        'This autumn Salma starts at an engineering school. She also mentors two students from her old high school, meeting each of them once a month.',
+        'Her advice to students who are where she was three years ago is simple: come to one event, and ask one question.',
+      ],
+    },
+  ],
 };
 
 const articles = [
   {
-    id: 1,
+    slug: 'what-600-students-taught-us',
     category: 'Events',
     date: '12 Oct 2026',
     dateTime: '2026-10-12',
@@ -26,7 +57,7 @@ const articles = [
     imageAlt: 'AFS volunteers welcoming students at an outreach event',
   },
   {
-    id: 2,
+    slug: 'back-from-the-atlas',
     category: 'Events',
     date: '18 Jun 2026',
     dateTime: '2026-06-18',
@@ -37,7 +68,7 @@ const articles = [
     imageAlt: 'AFS students and volunteers gathered in the Atlas Mountains',
   },
   {
-    id: 3,
+    slug: 'three-new-partners',
     category: 'Partners',
     date: '2 Jun 2026',
     dateTime: '2026-06-02',
@@ -48,7 +79,7 @@ const articles = [
     imageAlt: 'Students and volunteers outside a school building',
   },
   {
-    id: 4,
+    slug: 'karim-on-finding-a-mentor',
     category: 'Student stories',
     date: '21 May 2026',
     dateTime: '2026-05-21',
@@ -59,7 +90,7 @@ const articles = [
     imageAlt: 'An AFS participant wearing a shirt about finding success',
   },
   {
-    id: 5,
+    slug: 'volunteer-applications-2026-27',
     category: 'Announcements',
     date: '3 May 2026',
     dateTime: '2026-05-03',
@@ -70,7 +101,7 @@ const articles = [
     imageAlt: 'Young students together at an AFS gathering',
   },
   {
-    id: 6,
+    slug: 'scholarship-clinic-in-rabat',
     category: 'Events',
     date: '10 Apr 2026',
     dateTime: '2026-04-10',
@@ -83,3 +114,8 @@ const articles = [
 ];
 
 export default articles;
+
+const allArticles = [featuredArticle, ...articles];
+
+export const articlePath = (article) => `/news/${article.slug}`;
+export const getArticle = (slug) => allArticles.find((article) => article.slug === slug);

@@ -1,29 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import StatsSection from '../components/StatsSection.jsx';
-import {
-  GraduationCap,
-  Star,
-  UsersRound,
-  ChartNoAxesColumnIncreasing,
-  ArrowRight,
-  HeartHandshake,
-  HandHeart,
-  Handshake,
-} from 'lucide-react';
+
+const icons = '/assets/icons/about';
 
 export default function About() {
   return (
     <>
       {/* ABOUT PAGE - HERO SECTION */}
       <section className="about-hero">
-        <div className="container about-hero-layout">
+        <div className="about-hero-layout">
           {/* LEFT SIDE - TEXT */}
           <div className="about-hero-content">
             <h1>
-              Opening doors for <br />
-              the <span>next</span> <br />
-              <span>generation.</span>
+              Opening doors for the <span>next generation.</span>
             </h1>
 
             <p className="about-hero-description">
@@ -44,30 +34,19 @@ export default function About() {
               src="/assets/images/about/abou1.png"
               alt="Ask For Success association members"
               className="about-hero-image"
+              fetchPriority="high"
             />
           </div>
         </div>
       </section>
       <section className="about-mission">
-        {/* DECORATIVE CIRCLES */}
-        <div className="mission-decoration mission-decoration-left">
-          {Array.from({ length: 7 }, (_, i) => (
-            <span key={i}></span>
-          ))}
-        </div>
-
-        <div className="mission-decoration mission-decoration-right">
-          {Array.from({ length: 7 }, (_, i) => (
-            <span key={i}></span>
-          ))}
-        </div>
-
-        <div className="container about-mission-content">
-          <h2>Our Mission</h2>
-
-          <p className="about-mission-subtitle">
-            Turning potential into achievement, together.
-          </p>
+        <img className="mission-decoration mission-decoration-left" src="/assets/images/about/mission-rings-left.png" alt="" />
+        <img className="mission-decoration mission-decoration-right" src="/assets/images/about/mission-rings-right.png" alt="" />
+        <div className="site-shell about-mission-content">
+          <div className="about-mission-heading">
+            <h2>Our Mission</h2>
+            <p>Turning potential into achievement, together.</p>
+          </div>
 
           <p className="about-mission-description">
             Our mission is to bridge the gap between ambition and opportunity.
@@ -79,7 +58,7 @@ export default function About() {
         </div>
       </section>
       <section className="about-values">
-        <div className="container">
+        <div className="site-shell">
           {/* SECTION HEADER */}
           <div className="about-values-header">
             <div>
@@ -87,9 +66,9 @@ export default function About() {
               <p>Four pillars, one purpose.</p>
             </div>
 
-            <Link to="/get-involved" className="about-values-link">
+            <Link to="/get-involved" className="home-button home-button--large about-values-link">
               See how you can help
-              <ArrowRight size={18} />
+              <img src="/assets/icons/home/arrow-view-all.svg" alt="" />
             </Link>
           </div>
 
@@ -98,7 +77,7 @@ export default function About() {
             {/* EDUCATION */}
             <article className="about-value-card">
               <div className="about-value-icon">
-                <GraduationCap size={23} />
+                <img src={`${icons}/education.svg`} alt="" />
               </div>
 
               <h3>Education</h3>
@@ -112,7 +91,7 @@ export default function About() {
             {/* OPPORTUNITY */}
             <article className="about-value-card">
               <div className="about-value-icon">
-                <Star size={23} />
+                <img src={`${icons}/opportunity.svg`} alt="" />
               </div>
 
               <h3>Opportunity</h3>
@@ -126,7 +105,7 @@ export default function About() {
             {/* COMMUNITY */}
             <article className="about-value-card">
               <div className="about-value-icon">
-                <UsersRound size={23} />
+                <img src={`${icons}/community.svg`} alt="" />
               </div>
 
               <h3>Community</h3>
@@ -140,14 +119,14 @@ export default function About() {
             {/* IMPACT */}
             <article className="about-value-card">
               <div className="about-value-icon">
-                <ChartNoAxesColumnIncreasing size={23} />
+                <img src={`${icons}/impact.svg`} alt="" />
               </div>
 
               <h3>Impact</h3>
 
               <p>
                 We measure success not just in numbers, but in the real change
-                we help create in young people's lives.
+                we help create in young people’s lives.
               </p>
             </article>
           </div>
@@ -155,7 +134,7 @@ export default function About() {
       </section>
       <StatsSection />
       <section className="about-story">
-        <div className="container about-story-layout">
+        <div className="site-shell about-story-layout">
           {/* LEFT - IMAGE */}
           <div className="about-story-image">
             <img
@@ -184,26 +163,24 @@ export default function About() {
         </div>
       </section>
       <section className="about-join">
-        <div className="container about-join-layout">
+        <div className="site-shell about-join-layout">
           {/* LEFT - CONTENT */}
           <div className="about-join-content">
             <h2>Be part of the story</h2>
 
             <p>
               Whether you volunteer your time, support a cause, or partner with
-              us — you help write the next success story.
+              us, you help write the next success story.
             </p>
 
             <div className="about-join-actions">
-              <Link to="/get-involved" className="about-join-donate">
+              <Link to="/get-involved#donate" className="home-button home-button--large home-button--filled">
                 Donate
               </Link>
 
-              <Link to="/get-involved" className="about-join-partner">
+              <Link to="/get-involved#partner" className="home-button home-button--large home-button--outline">
                 Become a partner
-                <span className="about-join-arrow">
-                  <ArrowRight size={15} />
-                </span>
+                <img src="/assets/icons/home/arrow-outlined.svg" alt="" />
               </Link>
             </div>
           </div>
@@ -214,18 +191,18 @@ export default function About() {
 
             <div className="about-help-item">
               <span className="about-help-icon">
-                <HandHeart size={20} />
+                <img src={`${icons}/volunteer.svg`} alt="" />
               </span>
 
               <div>
                 <h4>Volunteer</h4>
-                <p>Give your time, energy, workshops, and mentoring.</p>
+                <p>Give your time at events, workshops, and mentoring.</p>
               </div>
             </div>
 
             <div className="about-help-item">
               <span className="about-help-icon">
-                <Handshake size={20} />
+                <img src={`${icons}/partner.svg`} alt="" />
               </span>
 
               <div>
@@ -236,7 +213,7 @@ export default function About() {
 
             <div className="about-help-item">
               <span className="about-help-icon">
-                <HeartHandshake size={20} />
+                <img src={`${icons}/donate.svg`} alt="" />
               </span>
 
               <div>

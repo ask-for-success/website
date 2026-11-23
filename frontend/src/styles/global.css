@@ -11,9 +11,9 @@ html {
 }
 
 body {
-    font-family: 'Poppins', sans-serif;
-    background-color: white;
-    color: var(--text-dark);
+    font-family: var(--font-family-base);
+    background-color: var(--color-surface-page);
+    color: var(--color-text-heading);
 }
 
 a {
@@ -34,4 +34,9 @@ img {
 .container {
     width: min(90%, var(--container-width));
     margin: 0 auto;
+}
+
+.site-shell {
+    width: min(var(--layout-content-max), calc(100% - 2 * var(--layout-page-margin-mobile)));
+    margin-inline: auto;
 }
